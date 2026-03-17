@@ -192,6 +192,8 @@ class RandomScaleTranslate:
         dy = th.randint(low=0, high=self.d - nh + 1, size=(1,)).item()
 
         img = fT.resize(img, (nh, nw))
+
+
         target[:, [1, 3]] *= nw / w
         target[:, [2, 4]] *= nh / h
 

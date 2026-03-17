@@ -9,6 +9,8 @@ from loss import YOLO_Loss
 from tqdm import tqdm
 from typing import List, Tuple, Dict
 
+from pathlib import Path                             ######################
+import time                                          ######################
 # Model Hyperparameters
 S = 7
 B = 2
@@ -19,17 +21,20 @@ L_COORD = 5.0
 L_NOOBJ = 0.5
 
 # Data Augmentation Hyperparameters
-HUE = 0.1
+HUE = 0.1                                             ################################## not mentioned this hyperparameter
 SATURATION = 1.5
 EXPOSURE = 1.5
 
 RESIZE_PROB = 0.2
-ZOOM_OUT_PROB = 0.4
-ZOOM_IN_PROB = 0.4
-JITTER = 0.2
+ZOOM_OUT_PROB = 0.0
+# ZOOM_OUT_PROB = 0.4                                   ################################## not mentioned the probability
+ZOOM_IN_PROB = 0.4                                    ################################## not mentioned the probability in the paper
+JITTER = 0.2                                          ################################## not mentioned the probability
 
 # Data Loading Hyperparameters
-BATCH = 64
+# BATCH = 64
+# SUBDIVISIONS = 8
+BATCH = 16
 SUBDIVISIONS = 8
 NUM_WORKERS = 10
 SHUFFLE = True
@@ -37,8 +42,8 @@ PIN_MEMORY = True
 DROP_LAST = True
 
 # Training Hyperparameters
-MAX_EPOCHS = 156
-INIT_LR = 0.0005
+MAX_EPOCHS = 156                                        ################################## in the paper, the epoches = 135
+INIT_LR = 0.0005                                        ################################## learning strategey is different from the paper
 BURN_IN = 100
 BURN_IN_POW = 2.
 LR_SCHEDULE = [(750, 2.0),  # (step, scale)
@@ -54,24 +59,39 @@ LR_SCHEDULE = [(750, 2.0),  # (step, scale)
 MOMENTUM = 0.9
 WEIGHT_DECAY = 0.0005
 
+BASE_DIR = Path(__file__).resolve().parent.parent 
 # VOC Dataset Directory
-PASCAL_VOC_DIR_PATH = "/media/soul/DATA/cv_datasets/PASCAL_VOC/VOC_Detection"
+# PASCAL_VOC_DIR_PATH = "/media/soul/DATA/cv_datasets/PASCAL_VOC/VOC_Detection"
+PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "VOC_Detection"
 
 # Compute Device (use a GPU if available)
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 
 # Checkpoint Hyperparameters
 LOAD_MODEL = 'pretrain'  # 'pretrain', 'train', None
-PRETRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
-                           "Detection/checkpoints/pretrained_model_weights.pt"
-TRAINING_CHECKPOINT_PATH = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
-                           "Detection/checkpoints/training_checkpoint.pt"
-TRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
-                        "Detection/checkpoints/trained_model_weights.pt"
+
+# PRETRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
+#                            "Detection/checkpoints/pretrained_model_weights.pt"
+
+# TRAINING_CHECKPOINT_PATH = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
+#                            "Detection/checkpoints/training_checkpoint.pt"
+# TRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
+#                         "Detection/checkpoints/trained_model_weights.pt"
+
+                                  ################################
+PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt" ################################
+
+TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "training_checkpoint.pt"      ################################
+
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "trained_model_weights.pt"       ################################
+
 CHECKPOINT_T = 10
 
 
 ##########################################################################
+def log(msg):
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
 
 class MultiStepScaleLR:
     """
@@ -158,7 +178,15 @@ def train_epoch(train_loader: DataLoader,
     av_loss = 0.
 
     model.train()
-    for x, y_gt in train_loader:
+
+    start_time = time.time()
+
+    for batch_i, (x, y_gt) in enumerate(train_loader):
+
+        if batch_i % 50 == 0:
+            lr = optimizer.param_groups[0]['lr']
+            log(f"Batch {batch_i}/{len(train_loader)} | lr={lr:.6f}")
+
         mini_batch += 1
         x, y_gt = x.to(DEVICE), y_gt.to(DEVICE)
         y_pred = model(x)
@@ -174,6 +202,10 @@ def train_epoch(train_loader: DataLoader,
         av_loss += loss.item() * SUBDIVISIONS
 
     av_loss /= len(train_loader)
+
+    epoch_time = time.time() - start_time
+    log(f"Epoch train time: {epoch_time/60:.2f} min")
+
     return av_loss, mini_batch
 
 
@@ -188,16 +220,25 @@ def validate_epoch(val_loader: DataLoader,
     :param criterion: The YOLO loss criterion
     :return: The average test loss per instance for this epoch
     """
+
+    log("Starting validation...")
+
     av_loss = 0.
     with th.no_grad():
         model.eval()
-        for x, y_gt in val_loader:
+        for i, (x, y_gt) in enumerate(val_loader):
+            if i % 50 == 0:
+                log(f"Validation batch {i}/{len(val_loader)}")
+
             x, y_gt = x.to(DEVICE), y_gt.to(DEVICE)
             y_pred = model(x)
             loss = criterion(y_pred, y_gt)
             av_loss += loss.item()
 
     av_loss /= len(val_loader)
+
+    log(f"Validation finished. Loss={av_loss:.4f}")
+
     return av_loss
 
 
@@ -232,6 +273,7 @@ def train(train_loader: DataLoader,
         optimizer.zero_grad()
 
     while epoch < MAX_EPOCHS:
+        log(f"Starting epoch {epoch+1}/{MAX_EPOCHS}")
         epoch += 1
 
         train_loss, mini_batch = train_epoch(train_loader, model, optimizer, criterion, scheduler, mini_batch)
@@ -254,6 +296,8 @@ def train(train_loader: DataLoader,
         pbar.set_postfix_str(f'Train Loss={train_loss:.3f}, Test Loss={test_loss:.3f}')
         pbar.update(1)
 
+        log(f"Epoch {epoch} finished | Train Loss={train_loss:.4f} | Test Loss={test_loss:.4f}")
+
     th.save(model.state_dict(), TRAINED_MODEL_WEIGHTS)
     pbar.close()
 
@@ -267,21 +311,26 @@ def setup_train():
              an SGD with momentum optimizer, a learning rate scheduler that scales the learning at the given steps by
              the corresponding factors, and the YOLO loss criterion.
     """
+    log("Creating model...")
     model = YOLOv1(S=S,
                    B=B,
                    C=VOC_Detection.C).to(DEVICE)
+    log(f"Device: {DEVICE}")
 
+    log("Creating optimizer...")
     optimizer = opt.SGD(params=model.parameters(),
                         lr=INIT_LR * (1/BURN_IN)**BURN_IN_POW,
                         momentum=MOMENTUM,
                         weight_decay=WEIGHT_DECAY)
 
+    log("Creating scheduler...")
     scheduler = MultiStepScaleLR(optimizer,
                                  init_lr=INIT_LR,
                                  lr_schedule=LR_SCHEDULE,
                                  burn_in=BURN_IN,
                                  burn_in_pow=BURN_IN_POW)
 
+    log("Creating loss function...")
     criterion = YOLO_Loss(S=S,
                           C=VOC_Detection.C,
                           B=B,
@@ -289,6 +338,7 @@ def setup_train():
                           L_coord=L_COORD,
                           L_noobj=L_NOOBJ).to(DEVICE)
 
+    log("Loading datasets...")
     train_dataset = VOC_Detection(root_dir=PASCAL_VOC_DIR_PATH,
                                   split='train',
                                   transforms=transforms.Compose([
@@ -305,6 +355,8 @@ def setup_train():
                                                    C=VOC_Detection.C,
                                                    normalize=[[0.4549, 0.4341, 0.4010],
                                                               [0.2703, 0.2672, 0.2808]])]))
+    log(f"Train dataset size: {len(train_dataset)}")
+
 
     test_dataset = VOC_Detection(root_dir=PASCAL_VOC_DIR_PATH,
                                  split='test',
@@ -314,7 +366,9 @@ def setup_train():
                                                   C=VOC_Detection.C,
                                                   normalize=[[0.4549, 0.4341, 0.4010],
                                                              [0.2703, 0.2672, 0.2808]])]))
+    log(f"Test dataset size: {len(test_dataset)}")
 
+    log("Creating DataLoaders...")
     train_loader = DataLoader(dataset=train_dataset,
                               batch_size=BATCH // SUBDIVISIONS,
                               num_workers=NUM_WORKERS,
@@ -327,6 +381,7 @@ def setup_train():
                              num_workers=NUM_WORKERS,
                              pin_memory=PIN_MEMORY)
 
+    log("Setup finished.")
     return train_loader, test_loader, model, optimizer, scheduler, criterion
 
 
@@ -378,8 +433,11 @@ def init_train(model: YOLOv1,
 
 
 def main():
+    log("Starting YOLOv1 training")
     train_loader, test_loader, model, optimizer, scheduler, criterion = setup_train()
+    log("Initialization...")
     epoch, mini_batch, train_loss_hist, test_loss_hist = init_train(model, optimizer, scheduler)
+    log(f"Starting from epoch {epoch}")
     train(train_loader, test_loader, model, optimizer, criterion, scheduler,
           epoch, mini_batch,
           train_loss_hist, test_loss_hist)

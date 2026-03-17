@@ -1,0 +1,4 @@
+data/
+code/test.py
+code/__pycache__/
+scripts/data_backup/

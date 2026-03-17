@@ -10,20 +10,25 @@ from typing import Tuple
 import matplotlib.pyplot as plt
 import matplotlib
 
+from pathlib import Path
 # Model Hyperparameters
 S = 7
 B = 2
 D = 448
 
 # Trained Model Path
-TRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
-                        "Detection/checkpoints/trained_model_weights.pt"
+# TRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
+#                         "Detection/checkpoints/trained_model_weights.pt"
 
+BASE_DIR = Path(__file__).resolve().parent.parent                                   ################################
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "trained_model_weights.pt"       ################################
+PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "VOC_Detection"                           ################################
+ASSETS_DIR = BASE_DIR / "assets2"
 # VOC Dataset Directory
-PASCAL_VOC_DIR_PATH = "/media/soul/DATA/cv_datasets/PASCAL_VOC/VOC_Detection"
+# PASCAL_VOC_DIR_PATH = "/media/soul/DATA/cv_datasets/PASCAL_VOC/VOC_Detection"
 
 # Save Image Path
-ASSETS_DIR = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object Detection/assets"
+# ASSETS_DIR = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object Detection/assets"
 
 # Compute Device (use a GPU if available)
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'

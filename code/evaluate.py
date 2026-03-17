@@ -9,6 +9,8 @@ from transforms import Resize, ImgToTensor
 from typing import List, Tuple, Literal
 import matplotlib.pyplot as plt
 
+from pathlib import Path
+
 # Model Hyperparameters
 S = 7
 B = 2
@@ -18,17 +20,22 @@ D = 448
 MINI_BATCH = 1
 NUM_WORKERS = 1
 PIN_MEMORY = True
+# NUM_WORKERS = 0
+# PIN_MEMORY = False
 
 # VOC Dataset Directory
-PASCAL_VOC_DIR_PATH = "/media/soul/DATA/cv_datasets/PASCAL_VOC/VOC_Detection"
+# PASCAL_VOC_DIR_PATH = "/media/soul/DATA/cv_datasets/PASCAL_VOC/VOC_Detection"
 
 # Trained Model Path
-TRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
-                        "Detection/checkpoints/trained_model_weights.pt"
+# TRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
+#                         "Detection/checkpoints/trained_model_weights.pt"
+
+BASE_DIR = Path(__file__).resolve().parent.parent                                   ################################
+PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "VOC_Detection"                           ################################
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "trained_model_weights.pt"       ################################
 
 # Compute Device (use a GPU if available)
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
-
 # Postprocessing Hyperparameters
 PROB_THRESHOLD = 0.005  # this value is set ~= 0 for the map metric calculation
 NMS_THESHOLD = 0.6
@@ -273,12 +280,17 @@ def setup_evaluation() -> Tuple[YOLOv1, DataLoader]:
 
     :return: The YOLOv1 (detection) model and the DataLoader of the PASCAL VOC test set.
     """
+    print("A. creating model")
     model = YOLOv1(S=S,
                    B=B,
                    C=VOC_Detection.C).to(DEVICE)
+    
+    print("B. loading weights")
     trained_model_weights = th.load(TRAINED_MODEL_WEIGHTS)
     model.load_state_dict(trained_model_weights)
 
+
+    print("C. creating dataset")
     test_dataset = VOC_Detection(root_dir=PASCAL_VOC_DIR_PATH,
                                  split='test',
                                  transforms=transforms.Compose([
@@ -287,11 +299,13 @@ def setup_evaluation() -> Tuple[YOLOv1, DataLoader]:
                                                             [0.2703, 0.2672, 0.2808]])
                                  ]))
 
+    print("D. creating dataloader")
     test_loader = DataLoader(dataset=test_dataset,
                              batch_size=MINI_BATCH,
                              num_workers=NUM_WORKERS,
                              pin_memory=PIN_MEMORY)
 
+    print("E. setup finished")
     return model, test_loader
 
 
@@ -320,8 +334,11 @@ def plot_class_ap(average_precisions: List[float]) -> None:
 
 
 def main():
+    print(("1. start"))
     model, test_loader = setup_evaluation()
+    print("2. setup done")
     mAP, average_precisions = evaluate_model(model, test_loader)
+    print("3. evaluation done")
     print(f'Mean Average Precision = {mAP:.1f}%')
 
     if PLOT:

@@ -14,9 +14,21 @@ mkdir -p $1
 
 # Download the data, if they haven't already been downloaded (don't print a diagnostic message if the data have already
 # been downloaded).
-wget -nc -P $1 http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar \
-               http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar \
-               http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar > /dev/null 2>&1
+# wget -nc -P $1 http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar \
+#                http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar \
+#                http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar > /dev/null 2>&1
+
+# Download VOC 2012
+# curl -L --fail -o "$1/VOCtrainval_11-May-2012.tar" \
+# http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar
+
+# Download VOC 2007 trainval
+# curl -L --fail -o "$1/VOCtrainval_06-Nov-2007.tar" \
+# http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar
+
+# Download VOC 2007 test
+# curl -L --fail -o "$1/VOCtest_06-Nov-2007.tar" \
+# http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar
 
 # Extract the data from the .tar files (don't print the names of the extracted files)
 tar -xvf $1/VOCtrainval_11-May-2012.tar -C $1 > /dev/null

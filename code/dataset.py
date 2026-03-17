@@ -76,4 +76,5 @@ class VOC_Detection(Dataset):
         if self.transforms is not None:
             img, target = self.transforms((img, target))
 
+
         return img, target
