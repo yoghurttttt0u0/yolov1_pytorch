@@ -11,19 +11,31 @@ class VOC_Detection(Dataset):
     A custom Dataset for the VOC Detection data. An index number (starting from 0) and a color is assigned to each of
     the labels of the dataset.
     """
-    C = 20
+    # C = 20
 
-    index2label = ["person",
-                   "bird", "cat", "cow", "dog", "horse", "sheep",
-                   "aeroplane", "bicycle", "boat", "bus", "car", "motorbike", "train",
-                   "bottle", "chair", "diningtable", "pottedplant", "sofa", "tvmonitor"]
+    # index2label = ["person",
+    #                "bird", "cat", "cow", "dog", "horse", "sheep",
+    #                "aeroplane", "bicycle", "boat", "bus", "car", "motorbike", "train",
+    #                "bottle", "chair", "diningtable", "pottedplant", "sofa", "tvmonitor"]
+
+    # label2index = {label: index for index, label in enumerate(index2label)}
+
+    # label_clrs = ["#ff0000",
+    #               "#2e8b57", "#808000", "#800000", "#000080", "#2f4f4f", "#ffa500",
+    #               "#00ff00", "#ba55d3", "#00fa9a", "#00ffff", "#0000ff", "#f08080", "#ff00ff",
+    #               "#1e90ff", "#ffff54", "#dda0dd", "#ff1493", "#87cefa", "#ffe4c4"]
+
+    C = 8
+
+    index2label = ["car",
+                   "van", "truck", "pedestrian", "Person_sitting", "cyclist", "tram",
+                   "misc"]
 
     label2index = {label: index for index, label in enumerate(index2label)}
 
     label_clrs = ["#ff0000",
-                  "#2e8b57", "#808000", "#800000", "#000080", "#2f4f4f", "#ffa500",
-                  "#00ff00", "#ba55d3", "#00fa9a", "#00ffff", "#0000ff", "#f08080", "#ff00ff",
-                  "#1e90ff", "#ffff54", "#dda0dd", "#ff1493", "#87cefa", "#ffe4c4"]
+                  "#2e8b57", "#808000", "#000080", 
+                  "#00ff00", "#ba55d3", "#00ffff",  "#f08080"]
 
     def __init__(self, root_dir: str, split: str = 'train',
                  transforms: Optional[Callable] = None) -> None:
@@ -61,7 +73,8 @@ class VOC_Detection(Dataset):
         :return: The (x,y)-pair of the image and the target
         """
         pid = self.pseudonyms[idx]
-        img_path = os.path.join(self.img_dir, f'{pid}.jpg')
+        # img_path = os.path.join(self.img_dir, f'{pid}.jpg')
+        img_path = os.path.join(self.img_dir, f'{pid}.png')##########################################################
         annot_path = os.path.join(self.annot_dir, f'{pid}.csv')
 
         img = Image.open(img_path)

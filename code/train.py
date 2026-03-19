@@ -9,8 +9,13 @@ from loss import YOLO_Loss
 from tqdm import tqdm
 from typing import List, Tuple, Dict
 
-from pathlib import Path                             ######################
-import time                                          ######################
+from pathlib import Path
+import time
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import os
+
 # Model Hyperparameters
 S = 7
 B = 2
@@ -26,8 +31,7 @@ SATURATION = 1.5
 EXPOSURE = 1.5
 
 RESIZE_PROB = 0.2
-ZOOM_OUT_PROB = 0.0
-# ZOOM_OUT_PROB = 0.4                                   ################################## not mentioned the probability
+ZOOM_OUT_PROB = 0.4                                   ################################## not mentioned the probability
 ZOOM_IN_PROB = 0.4                                    ################################## not mentioned the probability in the paper
 JITTER = 0.2                                          ################################## not mentioned the probability
 
@@ -42,56 +46,90 @@ PIN_MEMORY = True
 DROP_LAST = True
 
 # Training Hyperparameters
-MAX_EPOCHS = 156                                        ################################## in the paper, the epoches = 135
-INIT_LR = 0.0005                                        ################################## learning strategey is different from the paper
-BURN_IN = 100
-BURN_IN_POW = 2.
-LR_SCHEDULE = [(750, 2.0),  # (step, scale)
-               (1500, 2.0),
-               (2250, 1.25),
-               (3250, 1.60),
-               (5500, 1.25),
-               (15000, 0.8),
-               (20000, 0.625),
-               (25000, 0.8),
-               (30000, 0.5),
-               (35000, 0.5)]
+# MAX_EPOCHS = 156                                        ################################## in the paper, the epoches = 135
+# INIT_LR = 0.0005                                        ################################## learning strategey is different from the paper
+# BURN_IN = 100
+# BURN_IN_POW = 2.
+# LR_SCHEDULE = [(750, 2.0),  # (step, scale)
+#                (1500, 2.0),
+#                (2250, 1.25),
+#                (3250, 1.60),
+#                (5500, 1.25),
+#                (15000, 0.8),
+#                (20000, 0.625),
+#                (25000, 0.8),
+#                (30000, 0.5),
+#                (35000, 0.5)]
+# MOMENTUM = 0.9
+# WEIGHT_DECAY = 0.0005
+
+# Training Hyperparameters (fine-tune for VOC -> KITTI)
+MAX_EPOCHS = 30
+INIT_LR = 1e-4
+BURN_IN = 0
+BURN_IN_POW = 2.0
+LR_SCHEDULE = [
+    (1000, 0.1),   # after 1000 optimizer updates, lr *= 0.1
+    (2000, 0.1)    # after 2000 optimizer updates, lr *= 0.1 again
+]
 MOMENTUM = 0.9
 WEIGHT_DECAY = 0.0005
 
 BASE_DIR = Path(__file__).resolve().parent.parent 
-# VOC Dataset Directory
-# PASCAL_VOC_DIR_PATH = "/media/soul/DATA/cv_datasets/PASCAL_VOC/VOC_Detection"
-PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "VOC_Detection"
+# Dataset Directory
+DATASET_DIR = BASE_DIR / "data" / "KITTI"
 
 # Compute Device (use a GPU if available)
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 
 # Checkpoint Hyperparameters
-LOAD_MODEL = 'pretrain'  # 'pretrain', 'train', None
+LOAD_MODEL = 'train'  # 'pretrain', 'train', None, 'voc'
 
-# PRETRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
-#                            "Detection/checkpoints/pretrained_model_weights.pt"
 
-# TRAINING_CHECKPOINT_PATH = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
-#                            "Detection/checkpoints/training_checkpoint.pt"
-# TRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
-#                         "Detection/checkpoints/trained_model_weights.pt"
+PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt"
+VOC_TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "voc_trained_model_weights.pt"
+TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "kitti_finetune_checkpoint_20.pt"
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights.pt"
 
-                                  ################################
-PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt" ################################
+LOSS_PLOT_PATH = BASE_DIR / "assets_KITTI" / "kitti_finetune_loss.png"
+# CHECKPOINT_T = 10
+CHECKPOINT_T = 5
 
-TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "training_checkpoint.pt"      ################################
-
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "trained_model_weights.pt"       ################################
-
-CHECKPOINT_T = 10
 
 
 ##########################################################################
 def log(msg):
-    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+    tqdm.write(f"[{time.strftime('%H:%M:%S')}] {msg}")
 
+def save_loss_plot(train_loss_history, test_loss_history, save_path):
+    """
+    Save training / validation loss curve to disk.
+    """
+    if len(train_loss_history) == 0 and len(test_loss_history) == 0:
+        return
+
+    plt.figure(figsize=(8, 5))
+
+    if len(train_loss_history) > 0:
+        plt.plot(range(1, len(train_loss_history) + 1),
+                 train_loss_history,
+                 label='Train Loss')
+
+    if len(test_loss_history) > 0:
+        plt.plot(range(1, len(test_loss_history) + 1),
+                 test_loss_history,
+                 label='Test Loss')
+
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training and Test Loss')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    os.makedirs(Path(save_path).parent, exist_ok=True)
+    plt.savefig(save_path, dpi=150)
+    plt.close()
 
 class MultiStepScaleLR:
     """
@@ -119,12 +157,16 @@ class MultiStepScaleLR:
                              beginning of the training.
         """
         self.optimizer = optimizer
-        self.steps, self.scales = zip(*lr_schedule)
         self.burn_in = burn_in
         self.init_lr = init_lr
         self.pow = burn_in_pow
         self.batch = 0
         self.next_step_ind = 0
+
+        if len(lr_schedule) > 0:
+            self.steps, self.scales = zip(*lr_schedule)
+        else:
+            self.steps, self.scales = [], []
 
     def step(self) -> None:
         """
@@ -132,8 +174,11 @@ class MultiStepScaleLR:
         reach the given init_lr. Afterwards the learning rate is scaled as specified at the corresponding steps.
         """
         self.batch += 1
-        if self.batch < self.burn_in:
-            self.optimizer.param_groups[0]['lr'] = self.init_lr * ((self.batch+1)/self.burn_in)**self.pow
+
+        if self.burn_in > 0 and self.batch < self.burn_in:
+            self.optimizer.param_groups[0]['lr'] = (
+                self.init_lr * ((self.batch + 1) / self.burn_in) ** self.pow
+            )
         elif self.next_step_ind < len(self.steps) and self.batch == self.steps[self.next_step_ind]:
             self.optimizer.param_groups[0]['lr'] *= self.scales[self.next_step_ind]
             self.next_step_ind += 1
@@ -183,7 +228,7 @@ def train_epoch(train_loader: DataLoader,
 
     for batch_i, (x, y_gt) in enumerate(train_loader):
 
-        if batch_i % 50 == 0:
+        if batch_i % 500 == 0:
             lr = optimizer.param_groups[0]['lr']
             log(f"Batch {batch_i}/{len(train_loader)} | lr={lr:.6f}")
 
@@ -227,7 +272,7 @@ def validate_epoch(val_loader: DataLoader,
     with th.no_grad():
         model.eval()
         for i, (x, y_gt) in enumerate(val_loader):
-            if i % 50 == 0:
+            if i % 500 == 0:
                 log(f"Validation batch {i}/{len(val_loader)}")
 
             x, y_gt = x.to(DEVICE), y_gt.to(DEVICE)
@@ -282,6 +327,8 @@ def train(train_loader: DataLoader,
         train_loss_history.append(train_loss)
         test_loss_history.append(test_loss)
 
+        save_loss_plot(train_loss_history, test_loss_history, LOSS_PLOT_PATH)
+
         if epoch % CHECKPOINT_T == 0:
             th.save({'epoch': epoch,
                      'mini_batch': mini_batch,
@@ -311,6 +358,10 @@ def setup_train():
              an SGD with momentum optimizer, a learning rate scheduler that scales the learning at the given steps by
              the corresponding factors, and the YOLO loss criterion.
     """
+    log(f"DATASET_DIR: {DATASET_DIR}")
+    log(f"VOC_TRAINED_MODEL_WEIGHTS: {VOC_TRAINED_MODEL_WEIGHTS}")
+    log(f"TRAINED_MODEL_WEIGHTS: {TRAINED_MODEL_WEIGHTS}")
+
     log("Creating model...")
     model = YOLOv1(S=S,
                    B=B,
@@ -318,8 +369,9 @@ def setup_train():
     log(f"Device: {DEVICE}")
 
     log("Creating optimizer...")
+    start_lr = INIT_LR if BURN_IN == 0 else INIT_LR * (1 / BURN_IN) ** BURN_IN_POW
     optimizer = opt.SGD(params=model.parameters(),
-                        lr=INIT_LR * (1/BURN_IN)**BURN_IN_POW,
+                        lr=start_lr,
                         momentum=MOMENTUM,
                         weight_decay=WEIGHT_DECAY)
 
@@ -339,7 +391,7 @@ def setup_train():
                           L_noobj=L_NOOBJ).to(DEVICE)
 
     log("Loading datasets...")
-    train_dataset = VOC_Detection(root_dir=PASCAL_VOC_DIR_PATH,
+    train_dataset = VOC_Detection(root_dir=DATASET_DIR,
                                   split='train',
                                   transforms=transforms.Compose([
                                       RandomScaleTranslate(output_size=D,
@@ -358,7 +410,7 @@ def setup_train():
     log(f"Train dataset size: {len(train_dataset)}")
 
 
-    test_dataset = VOC_Detection(root_dir=PASCAL_VOC_DIR_PATH,
+    test_dataset = VOC_Detection(root_dir=DATASET_DIR,
                                  split='test',
                                  transforms=transforms.Compose([
                                      Resize(output_size=D),
@@ -405,7 +457,7 @@ def init_train(model: YOLOv1,
         test_loss_history = []
 
     elif LOAD_MODEL == 'pretrain':
-        pretrained_model_weights = th.load(PRETRAINED_MODEL_WEIGHTS)
+        pretrained_model_weights = th.load(PRETRAINED_MODEL_WEIGHTS, map_location=DEVICE)
         model.load_state_dict(pretrained_model_weights, strict=False)
         epoch = 0
         mini_batch = 0
@@ -413,7 +465,7 @@ def init_train(model: YOLOv1,
         test_loss_history = []
 
     elif LOAD_MODEL == 'train':
-        checkpoint = th.load(TRAINING_CHECKPOINT_PATH)
+        checkpoint = th.load(TRAINING_CHECKPOINT_PATH, map_location=DEVICE)
 
         epoch = checkpoint['epoch']
         mini_batch = checkpoint['mini_batch']
@@ -426,8 +478,29 @@ def init_train(model: YOLOv1,
         for p in model.named_parameters():
             p[1].grad = checkpoint['grads'][p[0]]
 
+    elif LOAD_MODEL == 'voc':
+        log("Loading VOC-trained detection weights for fine-tuning...")
+        voc_weights = th.load(VOC_TRAINED_MODEL_WEIGHTS, map_location=DEVICE)
+        model_dict = model.state_dict()
+
+        # remove the final detection layer parameters whose shapes depend on class number C
+        filtered_weights = {}
+        for k, v in voc_weights.items():
+            if k in model_dict and model_dict[k].shape == v.shape:
+                filtered_weights[k] = v
+            else:
+                print(f"Skip loading: {k}")
+
+        model_dict.update(filtered_weights)
+        model.load_state_dict(model_dict)
+
+        epoch = 0
+        mini_batch = 0
+        train_loss_history = []
+        test_loss_history = []
+
     else:
-        assert 0
+        raise ValueError(f"Unsupported LOAD_MODEL: {LOAD_MODEL}")
 
     return epoch, mini_batch, train_loss_history, test_loss_history
 

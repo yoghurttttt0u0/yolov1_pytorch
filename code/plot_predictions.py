@@ -7,27 +7,31 @@ from dataset import VOC_Detection
 from evaluate import postprocessing
 import PIL.Image as Image
 from typing import Tuple
-import matplotlib.pyplot as plt
 import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
 
 from pathlib import Path
+
 # Model Hyperparameters
 S = 7
 B = 2
 D = 448
 
-# Trained Model Path
-# TRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
-#                         "Detection/checkpoints/trained_model_weights.pt"
 
-BASE_DIR = Path(__file__).resolve().parent.parent                                   ################################
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "trained_model_weights.pt"       ################################
-PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "VOC_Detection"                           ################################
-ASSETS_DIR = BASE_DIR / "assets2"
+BASE_DIR = Path(__file__).resolve().parent.parent
+# Trained Model Path
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights_30.pt"
+
 # VOC Dataset Directory
-# PASCAL_VOC_DIR_PATH = "/media/soul/DATA/cv_datasets/PASCAL_VOC/VOC_Detection"
+PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "KITTI"
 
 # Save Image Path
+ASSETS_DIR = BASE_DIR / "assets_KITTI"
+
+# TRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
+#                         "Detection/checkpoints/trained_model_weights.pt"
+# PASCAL_VOC_DIR_PATH = "/media/soul/DATA/cv_datasets/PASCAL_VOC/VOC_Detection"
 # ASSETS_DIR = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object Detection/assets"
 
 # Compute Device (use a GPU if available)
