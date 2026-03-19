@@ -91,3 +91,6 @@ class VOC_Detection(Dataset):
 
 
         return img, target
+    
+    def get_image_name(self, idx: int) -> str:
+        return f"{self.pseudonyms[idx]}.png"
