@@ -33,19 +33,21 @@ EXPOSURE = 1.5
 RESIZE_PROB = 0.2
 ZOOM_OUT_PROB = 0.4                                   ################################## not mentioned the probability
 ZOOM_IN_PROB = 0.4                                    ################################## not mentioned the probability in the paper
+ZOOM_IN_PROB = 0
 JITTER = 0.2                                          ################################## not mentioned the probability
 
 # Data Loading Hyperparameters
 # BATCH = 64
 # SUBDIVISIONS = 8
 BATCH = 16
-SUBDIVISIONS = 8
-NUM_WORKERS = 10
+SUBDIVISIONS = 4
+# NUM_WORKERS = 10
+NUM_WORKERS = 0
 SHUFFLE = True
 PIN_MEMORY = True
 DROP_LAST = True
 
-# Training Hyperparameters
+# Training Hyperparameters (VOC)
 # MAX_EPOCHS = 156                                        ################################## in the paper, the epoches = 135
 # INIT_LR = 0.0005                                        ################################## learning strategey is different from the paper
 # BURN_IN = 100
@@ -63,37 +65,52 @@ DROP_LAST = True
 # MOMENTUM = 0.9
 # WEIGHT_DECAY = 0.0005
 
-# Training Hyperparameters (fine-tune for VOC -> KITTI)
-MAX_EPOCHS = 30
-INIT_LR = 1e-4
-BURN_IN = 0
+# # Training Hyperparameters (fine-tune for VOC -> KITTI)
+# MAX_EPOCHS = 30
+# INIT_LR = 1e-4
+# BURN_IN = 0
+# BURN_IN_POW = 2.0
+# LR_SCHEDULE = [
+#     (1000, 0.1),   # after 1000 optimizer updates, lr *= 0.1
+#     (2000, 0.1)    # after 2000 optimizer updates, lr *= 0.1 again
+# ]
+# MOMENTUM = 0.9
+# WEIGHT_DECAY = 0.0005
+
+# Training Hyperparameters (fine-tune for VOC -> COCO)
+MAX_EPOCHS = 5
+
+INIT_LR = 3e-4
+BURN_IN = 1000
 BURN_IN_POW = 2.0
+
 LR_SCHEDULE = [
-    (1000, 0.1),   # after 1000 optimizer updates, lr *= 0.1
-    (2000, 0.1)    # after 2000 optimizer updates, lr *= 0.1 again
+    (10000, 0.1),
+    (18000, 0.1)
 ]
+
 MOMENTUM = 0.9
 WEIGHT_DECAY = 0.0005
 
 BASE_DIR = Path(__file__).resolve().parent.parent 
 # Dataset Directory
-DATASET_DIR = BASE_DIR / "data" / "KITTI"
+DATASET_DIR = BASE_DIR / "data" / "COCO"
 
 # Compute Device (use a GPU if available)
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 
 # Checkpoint Hyperparameters
-LOAD_MODEL = 'train'  # 'pretrain', 'train', None, 'voc'
+LOAD_MODEL = 'voc'  # 'pretrain', 'train', None, 'voc'
 
 
 PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt"
 VOC_TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "voc_trained_model_weights.pt"
-TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "kitti_finetune_checkpoint_20.pt"
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights.pt"
+TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "coco_finetune_checkpoint.pt"
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "coco_finetuned_model_weights.pt"
 
-LOSS_PLOT_PATH = BASE_DIR / "assets_KITTI" / "kitti_finetune_loss.png"
+LOSS_PLOT_PATH = BASE_DIR / "assets_COCO" / "coco_finetune_loss.png"
 # CHECKPOINT_T = 10
-CHECKPOINT_T = 5
+CHECKPOINT_T = 2
 
 
 

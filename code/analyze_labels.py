@@ -4,20 +4,93 @@ import csv
 
 BASE_DIR = Path(__file__).resolve().parent.parent 
 
-DATASET_DIR = BASE_DIR / "data" / "KITTI"
+DATASET_DIR = BASE_DIR / "data" / "COCO"
 TRAIN_TARGET_DIR = DATASET_DIR / "train" / "targets"
 TEST_TARGET_DIR = DATASET_DIR / "test" / "targets"
 
 
 CLASS_NAMES = [
-    "car",
-    "van", 
-    "truck", 
-    "pedestrian", 
-    "Person_sitting", 
-    "cyclist", 
-    "tram",
-    "misc"]
+        "person",         # 0   (original COCO id: 1)
+        "bicycle",        # 1   (original COCO id: 2)
+        "car",            # 2   (original COCO id: 3)
+        "motorcycle",     # 3   (original COCO id: 4)
+        "airplane",       # 4   (original COCO id: 5)
+        "bus",            # 5   (original COCO id: 6)
+        "train",          # 6   (original COCO id: 7)
+        "truck",          # 7   (original COCO id: 8)
+        "boat",           # 8   (original COCO id: 9)
+        "traffic light",  # 9   (original COCO id: 10)
+        "fire hydrant",   # 10  (original COCO id: 11)
+        "stop sign",      # 11  (original COCO id: 13)
+        "parking meter",  # 12  (original COCO id: 14)
+        "bench",          # 13  (original COCO id: 15)
+        "bird",           # 14  (original COCO id: 16)
+        "cat",            # 15  (original COCO id: 17)
+        "dog",            # 16  (original COCO id: 18)
+        "horse",          # 17  (original COCO id: 19)
+        "sheep",          # 18  (original COCO id: 20)
+        "cow",            # 19  (original COCO id: 21)
+        "elephant",       # 20  (original COCO id: 22)
+        "bear",           # 21  (original COCO id: 23)
+        "zebra",          # 22  (original COCO id: 24)
+        "giraffe",        # 23  (original COCO id: 25)
+        "backpack",       # 24  (original COCO id: 27)
+        "umbrella",       # 25  (original COCO id: 28)
+        "handbag",        # 26  (original COCO id: 31)
+        "tie",            # 27  (original COCO id: 32)
+        "suitcase",       # 28  (original COCO id: 33)
+        "frisbee",        # 29  (original COCO id: 34)
+        "skis",           # 30  (original COCO id: 35)
+        "snowboard",      # 31  (original COCO id: 36)
+        "sports ball",    # 32  (original COCO id: 37)
+        "kite",           # 33  (original COCO id: 38)
+        "baseball bat",   # 34  (original COCO id: 39)
+        "baseball glove", # 35  (original COCO id: 40)
+        "skateboard",     # 36  (original COCO id: 41)
+        "surfboard",      # 37  (original COCO id: 42)
+        "tennis racket",  # 38  (original COCO id: 43)
+        "bottle",         # 39  (original COCO id: 44)
+        "wine glass",     # 40  (original COCO id: 46)
+        "cup",            # 41  (original COCO id: 47)
+        "fork",           # 42  (original COCO id: 48)
+        "knife",          # 43  (original COCO id: 49)
+        "spoon",          # 44  (original COCO id: 50)
+        "bowl",           # 45  (original COCO id: 51)
+        "banana",         # 46  (original COCO id: 52)
+        "apple",          # 47  (original COCO id: 53)
+        "sandwich",       # 48  (original COCO id: 54)
+        "orange",         # 49  (original COCO id: 55)
+        "broccoli",       # 50  (original COCO id: 56)
+        "carrot",         # 51  (original COCO id: 57)
+        "hot dog",        # 52  (original COCO id: 58)
+        "pizza",          # 53  (original COCO id: 59)
+        "donut",          # 54  (original COCO id: 60)
+        "cake",           # 55  (original COCO id: 61)
+        "chair",          # 56  (original COCO id: 62)
+        "couch",          # 57  (original COCO id: 63)
+        "potted plant",   # 58  (original COCO id: 64)
+        "bed",            # 59  (original COCO id: 65)
+        "dining table",   # 60  (original COCO id: 67)
+        "toilet",         # 61  (original COCO id: 70)
+        "tv",             # 62  (original COCO id: 72)
+        "laptop",         # 63  (original COCO id: 73)
+        "mouse",          # 64  (original COCO id: 74)
+        "remote",         # 65  (original COCO id: 75)
+        "keyboard",       # 66  (original COCO id: 76)
+        "cell phone",     # 67  (original COCO id: 77)
+        "microwave",      # 68  (original COCO id: 78)
+        "oven",           # 69  (original COCO id: 79)
+        "toaster",        # 70  (original COCO id: 80)
+        "sink",           # 71  (original COCO id: 81)
+        "refrigerator",   # 72  (original COCO id: 82)
+        "book",           # 73  (original COCO id: 84)
+        "clock",          # 74  (original COCO id: 85)
+        "vase",           # 75  (original COCO id: 86)
+        "scissors",       # 76  (original COCO id: 87)
+        "teddy bear",     # 77  (original COCO id: 88)
+        "hair drier",     # 78  (original COCO id: 89)
+        "toothbrush"      # 79  (original COCO id: 90)
+    ]   
 
 def analyze_split(target_dir: Path, split_name: str):
     counts = defaultdict(int)
