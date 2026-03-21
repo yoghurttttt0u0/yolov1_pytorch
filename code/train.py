@@ -41,8 +41,7 @@ JITTER = 0.2                                          ##########################
 # SUBDIVISIONS = 8
 BATCH = 16
 SUBDIVISIONS = 4
-# NUM_WORKERS = 10
-NUM_WORKERS = 0
+NUM_WORKERS = 10
 SHUFFLE = True
 PIN_MEMORY = True
 DROP_LAST = True
@@ -65,9 +64,11 @@ DROP_LAST = True
 # MOMENTUM = 0.9
 # WEIGHT_DECAY = 0.0005
 
-# # Training Hyperparameters (fine-tune for VOC -> KITTI)
+# Training Hyperparameters (fine-tune for VOC -> KITTI)
 # MAX_EPOCHS = 30
 # INIT_LR = 1e-4
+# MAX_EPOCHS = 30
+# INIT_LR = 1e-3
 # BURN_IN = 0
 # BURN_IN_POW = 2.0
 # LR_SCHEDULE = [
@@ -76,25 +77,42 @@ DROP_LAST = True
 # ]
 # MOMENTUM = 0.9
 # WEIGHT_DECAY = 0.0005
-
-# Training Hyperparameters (fine-tune for VOC -> COCO)
-MAX_EPOCHS = 5
+MAX_EPOCHS = 30
 
 INIT_LR = 3e-4
-BURN_IN = 1000
+BURN_IN = 200
 BURN_IN_POW = 2.0
 
 LR_SCHEDULE = [
-    (10000, 0.1),
-    (18000, 0.1)
+    (3000, 0.1),   # about epoch 8
+    (7000, 0.1)    # about epoch 19
 ]
 
 MOMENTUM = 0.9
 WEIGHT_DECAY = 0.0005
 
+# # Training Hyperparameters (fine-tune for VOC -> COCO)
+# MAX_EPOCHS = 5
+
+# INIT_LR = 3e-4
+# BURN_IN = 1000
+# BURN_IN_POW = 2.0
+
+# LR_SCHEDULE = [
+#     (10000, 0.1),
+#     (18000, 0.1)
+# ]
+
+# MOMENTUM = 0.9
+# WEIGHT_DECAY = 0.0005
+
+# Early Stopping Hyperparameters
+EARLY_STOPPING_PATIENCE = 5
+EARLY_STOPPING_MIN_DELTA = 1e-3
+
 BASE_DIR = Path(__file__).resolve().parent.parent 
 # Dataset Directory
-DATASET_DIR = BASE_DIR / "data" / "COCO"
+DATASET_DIR = BASE_DIR / "data" / "KITTI"
 
 # Compute Device (use a GPU if available)
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
@@ -105,12 +123,11 @@ LOAD_MODEL = 'voc'  # 'pretrain', 'train', None, 'voc'
 
 PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt"
 VOC_TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "voc_trained_model_weights.pt"
-TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "coco_finetune_checkpoint.pt"
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "coco_finetuned_model_weights.pt"
+TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "kitti_finetune_checkpoint_3e-4.pt"
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights_3e-4.pt"
 
-LOSS_PLOT_PATH = BASE_DIR / "assets_COCO" / "coco_finetune_loss.png"
-# CHECKPOINT_T = 10
-CHECKPOINT_T = 2
+LOSS_PLOT_PATH = BASE_DIR / "assets_KITTI" / "KITTI_finetune_loss_lr_3e-4.png"
+CHECKPOINT_T = 10
 
 
 
@@ -334,6 +351,9 @@ def train(train_loader: DataLoader,
     if mini_batch == 0:
         optimizer.zero_grad()
 
+    best_test_loss = float('inf')
+    epochs_without_improvement = 0
+
     while epoch < MAX_EPOCHS:
         log(f"Starting epoch {epoch+1}/{MAX_EPOCHS}")
         epoch += 1
@@ -346,7 +366,24 @@ def train(train_loader: DataLoader,
 
         save_loss_plot(train_loss_history, test_loss_history, LOSS_PLOT_PATH)
 
+        if test_loss < best_test_loss - EARLY_STOPPING_MIN_DELTA:
+            best_test_loss = test_loss
+            epochs_without_improvement = 0
+
+            
+            th.save(model.state_dict(), TRAINED_MODEL_WEIGHTS)
+            log(f"New best model saved. Best Test Loss={best_test_loss:.4f}")
+        else:
+            epochs_without_improvement += 1
+        log(
+            f"No improvement in test loss for {epochs_without_improvement} epoch(s). "
+            f"Best Test Loss={best_test_loss:.4f}"
+        )
+
         if epoch % CHECKPOINT_T == 0:
+            save_path = TRAINING_CHECKPOINT_PATH.parent / \
+                f"{TRAINING_CHECKPOINT_PATH.stem}_epoch_{epoch}{TRAINING_CHECKPOINT_PATH.suffix}"
+            
             th.save({'epoch': epoch,
                      'mini_batch': mini_batch,
                      'model_state_dict': model.state_dict(),
@@ -355,14 +392,21 @@ def train(train_loader: DataLoader,
                      'train_loss_history': train_loss_history,
                      'test_loss_history': test_loss_history,
                      'grads': {p[0]: p[1].grad for p in model.named_parameters()}
-                     }, TRAINING_CHECKPOINT_PATH)
+                     }, save_path)
+            
+        if epochs_without_improvement >= EARLY_STOPPING_PATIENCE:
+            log(
+                f"Early stopping triggered at epoch {epoch}. "
+                f"Best Test Loss={best_test_loss:.4f}"
+            )
+            break
 
         pbar.set_postfix_str(f'Train Loss={train_loss:.3f}, Test Loss={test_loss:.3f}')
         pbar.update(1)
 
         log(f"Epoch {epoch} finished | Train Loss={train_loss:.4f} | Test Loss={test_loss:.4f}")
 
-    th.save(model.state_dict(), TRAINED_MODEL_WEIGHTS)
+    log(f"Training finished. Best model already saved to: {TRAINED_MODEL_WEIGHTS}")
     pbar.close()
 
 
