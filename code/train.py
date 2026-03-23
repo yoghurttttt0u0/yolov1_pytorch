@@ -77,7 +77,7 @@ DROP_LAST = True
 # ]
 # MOMENTUM = 0.9
 # WEIGHT_DECAY = 0.0005
-MAX_EPOCHS = 30
+MAX_EPOCHS = 50
 
 INIT_LR = 3e-4
 BURN_IN = 200
@@ -118,7 +118,7 @@ DATASET_DIR = BASE_DIR / "data" / "KITTI"
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 
 # Checkpoint Hyperparameters
-LOAD_MODEL = 'voc'  # 'pretrain', 'train', None, 'voc'
+LOAD_MODEL = 'train'  # 'pretrain', 'train', None, 'voc'
 
 
 PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt"

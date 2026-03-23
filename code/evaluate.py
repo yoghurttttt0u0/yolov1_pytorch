@@ -32,7 +32,7 @@ PIN_MEMORY = True
 
 BASE_DIR = Path(__file__).resolve().parent.parent 
 PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "KITTI"
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetune_model_lr_e-3.pt" ######## need to be changed
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights_3e-4.pt" ######## need to be changed
 # Compute Device (use a GPU if available)
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 # Postprocessing Hyperparameters

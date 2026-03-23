@@ -21,7 +21,7 @@ D = 448
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 # Trained Model Path
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights_30.pt"
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights_3e-4.pt"
 
 # VOC Dataset Directory
 PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "KITTI"

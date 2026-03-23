@@ -21,13 +21,13 @@ D = 448
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Trained Model Path
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights_30.pt" ######## need to be changed
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights_3e-4.pt" 
 
 # KITTI Dataset Directory
-PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "COCO"
+PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "KITTI"
 
 # Save Image Path
-ASSETS_DIR = BASE_DIR / "assets_COCO"
+ASSETS_DIR = BASE_DIR / "assets_KITTI"
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Compute Device (use a GPU if available)
@@ -39,7 +39,7 @@ NMS_THRESHOLD = 0.6
 CONF_MODE = "objectness"
 
 # OpenCV window name
-WINDOW_NAME = "YOLOv1 COCO Predictions"
+WINDOW_NAME = "YOLOv1 KITTI Predictions"
 
 # OpenCV key codes (waitKeyEx)
 KEY_LEFT = 2424832
@@ -53,6 +53,10 @@ KEY_A_LOWER = ord("a")
 KEY_A_UPPER = ord("A")
 KEY_D_LOWER = ord("d")
 KEY_D_UPPER = ord("D")
+KEY_G_LOWER = ord("g")
+KEY_G_UPPER = ord("G")
+KEY_P_LOWER = ord("p")
+KEY_P_UPPER = ord("P")
 
 COLORS = {}
 
@@ -60,22 +64,35 @@ def hex_to_bgr(hex_color):
     rgb = tuple(int(hex_color[i:i+2], 16) for i in (1, 3, 5))
     return (rgb[2], rgb[1], rgb[0])
 
-def annotate_img(img: Image.Image, bboxes: th.Tensor) -> Image.Image:
+def annotate_img(
+    img: Image.Image,
+    bboxes: th.Tensor,
+    show_conf: bool = True,
+    label_prefix: str = "",
+    use_dashed: bool = False,
+) -> Image.Image:
     """
     Annotate the given image based on the given bounding boxes.
 
-    The bounding box is plotted for each object of the image and the corresponding
-    label is also written inside the box.
+    If show_conf=True, bbox format should be:
+        [class_id, conf, x1, y1, x2, y2]
+
+    If show_conf=False, bbox format should be:
+        [class_id, x1, y1, x2, y2]
     """
     img = np.array(img)
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
     for bb in bboxes:
         cls = int(bb[0])
-        conf = float(bb[1].item())
-        x1, y1, x2, y2 = map(int, bb[2:])
 
-        # Prevent coordinate out-of-bounds
+        if show_conf:
+            conf = float(bb[1].item())
+            x1, y1, x2, y2 = map(int, bb[2:])
+        else:
+            conf = None
+            x1, y1, x2, y2 = map(int, bb[1:])
+
         h, w = img.shape[:2]
         x1 = max(0, min(x1, w - 1))
         x2 = max(0, min(x2, w - 1))
@@ -83,14 +100,32 @@ def annotate_img(img: Image.Image, bboxes: th.Tensor) -> Image.Image:
         y2 = max(0, min(y2, h - 1))
 
         label_name = VOC_Detection.index2label[cls]
-        label = f"{label_name} {conf:.2f}"
+        if show_conf:
+            label = f"{label_prefix}{label_name} {conf:.2f}"
+        else:
+            label = f"{label_prefix}{label_name}"
 
         color = hex_to_bgr(VOC_Detection.label_clrs[cls])
 
         thickness = 2
-        cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
 
-        # Adaptive font size
+        if use_dashed:
+            gap = 8
+            # top
+            for x in range(x1, x2, gap * 2):
+                cv2.line(img, (x, y1), (min(x + gap, x2), y1), color, thickness)
+            # bottom
+            for x in range(x1, x2, gap * 2):
+                cv2.line(img, (x, y2), (min(x + gap, x2), y2), color, thickness)
+            # left
+            for y in range(y1, y2, gap * 2):
+                cv2.line(img, (x1, y), (x1, min(y + gap, y2)), color, thickness)
+            # right
+            for y in range(y1, y2, gap * 2):
+                cv2.line(img, (x2, y), (x2, min(y + gap, y2)), color, thickness)
+        else:
+            cv2.rectangle(img, (x1, y1), (x2, y2), color, thickness)
+
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = max(0.45, min(0.7, img.shape[1] / 1600))
         font_thickness = 1
@@ -99,7 +134,6 @@ def annotate_img(img: Image.Image, bboxes: th.Tensor) -> Image.Image:
             label, font, font_scale, font_thickness
         )
 
-        # Tags are placed above the box by default; If it doesn't fit, put it at the top of the box
         text_y1 = y1 - th_text - baseline - 6
         text_y2 = y1
         text_x1 = x1
@@ -135,8 +169,41 @@ def annotate_img(img: Image.Image, bboxes: th.Tensor) -> Image.Image:
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     return Image.fromarray(img)
 
+def overlay_ground_truth(
+    img: Image.Image,
+    target: th.Tensor,
+) -> Image.Image:
+    """
+    Overlay ground-truth bounding boxes on the image.
 
-def predict_and_annotate(model: YOLOv1, img: Image.Image) -> Image.Image:
+    Expected target format: [class_id, x1, y1, x2, y2]
+    """
+    if target is None:
+        return img
+
+    if not isinstance(target, th.Tensor):
+        target = th.tensor(target)
+
+    if target.numel() == 0:
+        return img
+
+    if target.ndim == 1:
+        target = target.unsqueeze(0)
+
+    return annotate_img(
+        img,
+        target,
+        show_conf=False,
+        label_prefix="GT: ",
+        use_dashed=True,
+    )
+
+def predict_and_annotate(
+    model: YOLOv1,
+    img: Image.Image,
+    gt_target: th.Tensor = None,
+    show_gt: bool = False,
+) -> Image.Image:
     """
     Run prediction on one image and return the annotated PIL image.
     """
@@ -157,12 +224,16 @@ def predict_and_annotate(model: YOLOv1, img: Image.Image) -> Image.Image:
         nms_threshold=NMS_THRESHOLD,
     )
 
-    # After postprocessing, the bounding box coordinates are scaled for a (D x D) image.
     if bboxes_pred.numel() != 0:
         bboxes_pred[:, [2, 4]] *= w / D
         bboxes_pred[:, [3, 5]] *= h / D
 
-    return annotate_img(img, bboxes_pred)
+    annot_img = annotate_img(img, bboxes_pred, show_conf=True)
+
+    if show_gt:
+        annot_img = overlay_ground_truth(annot_img, gt_target)
+
+    return annot_img
 
 
 def pil_to_bgr(img: Image.Image) -> np.ndarray:
@@ -214,6 +285,8 @@ def add_status_bar(
     index: int,
     total: int,
     image_name: str,
+    show_gt: bool,
+    show_pred: bool,
 ) -> np.ndarray:
     """
     Add usage instructions and the current image file name under the displayed image.
@@ -224,7 +297,6 @@ def add_status_bar(
     canvas[:h] = img_bgr
     canvas[h:] = (24, 24, 24)
 
-    # Left side: Picture number
     left_text = f"Image {index + 1}/{total}"
     cv2.putText(
         canvas,
@@ -237,7 +309,6 @@ def add_status_bar(
         cv2.LINE_AA,
     )
 
-    # Middle: File name
     file_text = f"File: {image_name}"
     cv2.putText(
         canvas,
@@ -250,8 +321,31 @@ def add_status_bar(
         cv2.LINE_AA,
     )
 
-    # right side: Operation instructions
-    help_text = "A/Prev   D/Next   S Save   Q/Esc Quit"
+    gt_text = f"GT: {'ON' if show_gt else 'OFF'}"
+    cv2.putText(
+        canvas,
+        gt_text,
+        (220, h + 24),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (120, 220, 255) if show_gt else (160, 160, 160),
+        2,
+        cv2.LINE_AA,
+    )
+
+    pred_text = f"Pred: {'ON' if show_pred else 'OFF'}"
+    cv2.putText(
+        canvas,
+        pred_text,
+        (340, h + 24),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (120, 255, 120) if show_pred else (160, 160, 160),
+        2,
+        cv2.LINE_AA,
+    )
+
+    help_text = "A/Prev   D/Next   G Toggle GT   P Toggle Pred   S Save   Q/Esc Quit"
     text_size, _ = cv2.getTextSize(
         help_text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1
     )
@@ -275,12 +369,21 @@ def show_image(
     total: int,
     annotated_img: Image.Image,
     image_name: str,
+    show_gt: bool,
+    show_pred: bool,
 ) -> None:
     """
     Show one annotated image in an OpenCV window.
     """
     img_bgr = pil_to_bgr(annotated_img)
-    vis = add_status_bar(img_bgr, index, total, image_name)
+    vis = add_status_bar(
+    img_bgr,
+    index,
+    total,
+    image_name,
+    show_gt,
+    show_pred,
+)
 
     max_w = 1400
     max_h = 900
@@ -319,6 +422,32 @@ def save_image(img: Image.Image, index: int) -> str:
     img.save(path)
     return str(path)
 
+def render_image(
+    model,
+    pil_img,
+    target,
+    show_pred=True,
+    show_gt=False,
+):
+    """
+    Render image with optional prediction and GT overlays.
+    """
+    base_img = pil_img.copy()
+
+    # === 1. Prediction ===
+    if show_pred:
+        base_img = predict_and_annotate(
+            model,
+            base_img,
+            gt_target=None,
+            show_gt=False
+        )
+
+    # === 2. Ground Truth ===
+    if show_gt:
+        base_img = overlay_ground_truth(base_img, target)
+
+    return base_img
 
 def main() -> None:
     """
@@ -327,6 +456,7 @@ def main() -> None:
     Controls:
     - Left arrow or A: previous image
     - Right arrow or D: next image
+    - G: toggle ground-truth bounding boxes
     - S: save current image
     - Q or Esc: quit
     """
@@ -339,12 +469,28 @@ def main() -> None:
     cv2.resizeWindow(WINDOW_NAME, 1200, 800)
 
     index = 0
+    show_gt = False
+    show_pred = True
 
     while True:
-        pil_img, _, image_name = test_dataset[index]
-        # image_name = get_image_name(test_dataset, index)
-        annot_img = predict_and_annotate(model, pil_img)
-        show_image(index, len(test_dataset), annot_img, image_name)
+        pil_img, target = test_dataset[index]
+        image_name = get_image_name(test_dataset, index)
+
+        annot_img = render_image(
+            model,
+            pil_img,
+            target,
+            show_pred=show_pred,
+            show_gt=show_gt,
+        )
+        show_image(
+            index,
+            len(test_dataset),
+            annot_img,
+            image_name,
+            show_gt,
+            show_pred,
+        )
 
         key = cv2.waitKeyEx(0)
 
@@ -359,12 +505,19 @@ def main() -> None:
             index = (index + 1) % len(test_dataset)
             continue
 
+        if key in (KEY_G_LOWER, KEY_G_UPPER):
+            show_gt = not show_gt
+            continue
+
+        if key in (KEY_P_LOWER, KEY_P_UPPER):
+            show_pred = not show_pred
+            continue
+
         if key in (KEY_S_LOWER, KEY_S_UPPER):
             saved_path = save_image(annot_img, index)
             print(f"Saved: {saved_path}", flush=True)
             continue
 
-        # Ignore unsupported keys and stay on the current image.
         print(f"Ignored key code: {key}", flush=True)
 
     cv2.destroyAllWindows()
