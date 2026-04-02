@@ -151,6 +151,19 @@ class DetectionDataset(Dataset):
 
     label_clrs = _generate_distinct_colors(C)
 
+    def _find_image_path(self, pid: str) -> str:
+        possible_exts = [".jpg", ".png", ".jpeg", ".JPG", ".JPEG", ".PNG"]
+
+        for ext in possible_exts:
+            candidate = os.path.join(self.img_dir, f"{pid}{ext}")
+            if os.path.exists(candidate):
+                return candidate
+
+        raise FileNotFoundError(
+            f"No image found for pid '{pid}' in {self.img_dir}. "
+            f"Tried extensions: {possible_exts}"
+        )
+
     def __init__(self, root_dir: str, split: str = 'train',
                  transforms: Optional[Callable] = None) -> None:
         """ Initialize the VOC_Detection Dataset object.
@@ -187,8 +200,7 @@ class DetectionDataset(Dataset):
         :return: The (x,y)-pair of the image and the target
         """
         pid = self.pseudonyms[idx]
-        img_path = os.path.join(self.img_dir, f'{pid}.jpg')
-        # img_path = os.path.join(self.img_dir, f'{pid}.png')
+        img_path = self._find_image_path(pid)
         
         annot_path = os.path.join(self.annot_dir, f'{pid}.csv')
 
