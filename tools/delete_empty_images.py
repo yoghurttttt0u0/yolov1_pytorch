@@ -1,3 +1,8 @@
+"""Remove COCO entries with no objects to avoid training issues.
+
+Some COCO images have no annotated objects; these samples are deleted along with their CSV labels.
+"""
+
 import os
 import csv
 
@@ -11,11 +16,11 @@ for file in os.listdir(annot_dir):
         continue
 
     annot_path = os.path.join(annot_dir, file)
-    img_path = os.path.join(img_dir, file.replace(".csv", ".jpg"))  # 如果是png改这里
+    img_path = os.path.join(img_dir, file.replace(".csv", ".jpg"))  # If it's .png, change here
 
     with open(annot_path, "r", newline="") as f:
         reader = csv.reader(f)
-        next(reader, None)  # skip header
+        next(reader, None) 
         has_object = any(True for _ in reader)
 
     if not has_object:

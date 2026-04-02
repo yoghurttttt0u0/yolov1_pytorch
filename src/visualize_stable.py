@@ -1,3 +1,9 @@
+"""
+OpenCV-based prediction viewer as an alternative to matplotlib.
+
+Some team members have display issues with matplotlib, so this script uses OpenCV for more consistent behavior.
+"""
+
 import os
 from pathlib import Path
 from typing import Tuple
@@ -9,7 +15,7 @@ import torch as th
 import torchvision.transforms.functional as fT
 from torchvision.utils import draw_bounding_boxes
 
-from dataset import VOC_Detection
+from dataset import DetectionDataset
 from evaluate import postprocessing
 from model import YOLOv1
 
@@ -30,7 +36,6 @@ PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "COCOsubset"
 ASSETS_DIR = BASE_DIR / "assets_COCOsub"
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
-# Compute Device (use a GPU if available)
 DEVICE = "cuda" if th.cuda.is_available() else "cpu"
 
 # Postprocessing Hyperparameters
@@ -38,7 +43,6 @@ PROB_THRESHOLD = 0.15
 NMS_THRESHOLD = 0.6
 CONF_MODE = "objectness"
 
-# OpenCV window name
 WINDOW_NAME = "YOLOv1 COCO subset Predictions"
 
 # OpenCV key codes (waitKeyEx)
@@ -99,13 +103,13 @@ def annotate_img(
         y1 = max(0, min(y1, h - 1))
         y2 = max(0, min(y2, h - 1))
 
-        label_name = VOC_Detection.index2label[cls]
+        label_name = DetectionDataset.index2label[cls]
         if show_conf:
             label = f"{label_prefix}{label_name} {conf:.2f}"
         else:
             label = f"{label_prefix}{label_name}"
 
-        color = hex_to_bgr(VOC_Detection.label_clrs[cls])
+        color = hex_to_bgr(DetectionDataset.label_clrs[cls])
 
         thickness = 2
 
@@ -246,7 +250,7 @@ def pil_to_bgr(img: Image.Image) -> np.ndarray:
     return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 
 
-def get_image_name(dataset: VOC_Detection, index: int) -> str:
+def get_image_name(dataset: DetectionDataset, index: int) -> str:
     """
     Try to retrieve the current image file name from common dataset attributes.
     Falls back to a generic name if the path list is not exposed.
@@ -401,16 +405,16 @@ def show_image(
     cv2.imshow(WINDOW_NAME, vis)
 
 
-def setup_evaluation() -> Tuple[YOLOv1, VOC_Detection]:
+def setup_evaluation() -> Tuple[YOLOv1, DetectionDataset]:
     """
     Instantiate the model and the KITTI test dataset.
     """
-    model = YOLOv1(S=S, B=B, C=VOC_Detection.C).to(DEVICE)
+    model = YOLOv1(S=S, B=B, C=DetectionDataset.C).to(DEVICE)
     trained_model_weights = th.load(TRAINED_MODEL_WEIGHTS, map_location=DEVICE)
     model.load_state_dict(trained_model_weights)
     model.eval()
 
-    test_dataset = VOC_Detection(root_dir=PASCAL_VOC_DIR_PATH, split="test")
+    test_dataset = DetectionDataset(root_dir=PASCAL_VOC_DIR_PATH, split="test")
     return model, test_dataset
 
 
@@ -434,7 +438,6 @@ def render_image(
     """
     base_img = pil_img.copy()
 
-    # === 1. Prediction ===
     if show_pred:
         base_img = predict_and_annotate(
             model,
@@ -443,7 +446,6 @@ def render_image(
             show_gt=False
         )
 
-    # === 2. Ground Truth ===
     if show_gt:
         base_img = overlay_ground_truth(base_img, target)
 

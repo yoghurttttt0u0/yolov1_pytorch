@@ -1,3 +1,7 @@
+"""
+Dataset loader for VOC, KITTI, and COCO object detection.
+"""
+
 import torch as th
 from torch.utils.data import Dataset
 import os
@@ -6,7 +10,7 @@ import csv
 from typing import Callable, Optional, Tuple, Union, List
 import colorsys
 
-class VOC_Detection(Dataset):
+class DetectionDataset(Dataset):
     """
     A custom Dataset for the VOC Detection data. An index number (starting from 0) and a color is assigned to each of
     the labels of the dataset.
@@ -184,7 +188,8 @@ class VOC_Detection(Dataset):
         """
         pid = self.pseudonyms[idx]
         img_path = os.path.join(self.img_dir, f'{pid}.jpg')
-        # img_path = os.path.join(self.img_dir, f'{pid}.png')##########################################################
+        # img_path = os.path.join(self.img_dir, f'{pid}.png')
+        
         annot_path = os.path.join(self.annot_dir, f'{pid}.csv')
 
         img = Image.open(img_path).convert("RGB")

@@ -1,3 +1,7 @@
+"""
+Data augmentation and preprocessing transforms for YOLO training.
+"""
+
 import torch as th
 from torch.nn.functional import one_hot
 import torchvision.transforms.functional as fT

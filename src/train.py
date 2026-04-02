@@ -1,8 +1,13 @@
+"""YOLOv1 training script with full pipeline and monitoring.
+
+This script sets up the model, data loaders, loss function, and runs the training loop with progress tracking.
+"""
+
 import torch as th
 import torchvision.transforms as transforms
 import torch.optim as opt
 from torch.utils.data import DataLoader, WeightedRandomSampler
-from dataset import VOC_Detection
+from dataset import DetectionDataset
 from transforms import RandomScaleTranslate, Resize, RandomColorJitter, RandomHorizontalFlip, ToYOLOTensor
 from model import YOLOv1
 from loss import YOLO_Loss
@@ -26,15 +31,15 @@ L_COORD = 5.0
 L_NOOBJ = 0.5
 
 # Data Augmentation Hyperparameters
-HUE = 0.1                                             ################################## not mentioned this hyperparameter
+HUE = 0.1
 SATURATION = 1.5
 EXPOSURE = 1.5
 
 RESIZE_PROB = 0.2
-ZOOM_OUT_PROB = 0.4                                   ################################## not mentioned the probability
-ZOOM_IN_PROB = 0.4                                    ################################## not mentioned the probability in the paper
+ZOOM_OUT_PROB = 0.4
+ZOOM_IN_PROB = 0.4
 ZOOM_IN_PROB = 0
-JITTER = 0.2                                          ################################## not mentioned the probability
+JITTER = 0.2
 
 # Data Loading Hyperparameters
 # BATCH = 64
@@ -46,10 +51,9 @@ SHUFFLE = True
 PIN_MEMORY = True
 DROP_LAST = True
 
-# Training Hyperparameters (VOC)
-# MAX_EPOCHS = 156                                        ################################## in the paper, the epoches = 135
-# INIT_LR = 0.0005                                        ################################## learning strategey is different from the paper
-# BURN_IN = 100
+# Training Hyperparameters 1 (VOC)
+# MAX_EPOCHS = 156 
+# INIT_LR = 0.0005
 # BURN_IN_POW = 2.
 # LR_SCHEDULE = [(750, 2.0),  # (step, scale)
 #                (1500, 2.0),
@@ -64,7 +68,7 @@ DROP_LAST = True
 # MOMENTUM = 0.9
 # WEIGHT_DECAY = 0.0005
 
-# Training Hyperparameters (fine-tune for VOC -> KITTI)
+# Training Hyperparameters 2(fine-tune for VOC -> KITTI)
 # MAX_EPOCHS = 30
 # INIT_LR = 1e-4
 # MAX_EPOCHS = 30
@@ -92,7 +96,7 @@ DROP_LAST = True
 # MOMENTUM = 0.9
 # WEIGHT_DECAY = 0.0005
 
-# # Training Hyperparameters (fine-tune for VOC -> COCO)
+# Training Hyperparameters 3 (fine-tune for VOC -> COCO)
 MAX_EPOCHS = 50
 
 INIT_LR = 3e-4
@@ -112,27 +116,40 @@ EARLY_STOPPING_PATIENCE = 5
 EARLY_STOPPING_MIN_DELTA = 1e-3
 
 BASE_DIR = Path(__file__).resolve().parent.parent 
+
 # Dataset Directory
 DATASET_DIR = BASE_DIR / "data" / "COCOsubset"
 
-# Compute Device (use a GPU if available)
+# Compute Device
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 
-# Checkpoint Hyperparameters
-LOAD_MODEL = 'train'  # 'pretrain', 'train', None, 'voc'
+# Checkpoint Hyperparameters (None, 'pretrain', 'voc','train')
+# None: randomly initialize the model weights and train from scratch, which is not used for the reproduction.
+# 'pretrain': load the pretrained model weights trained on ImageNet.
+# 'voc': load the model weights trained on VOC for fine-tuning on COCO and KITTI.
+# 'train': load the checkpoint saved during training, which can be used for resuming training.
+LOAD_MODEL = 'train'  
 
+# trained on ImageNet, not used for the repoduction
+PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt" 
 
-PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt"
-VOC_TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "voc_trained_model_weights.pt"
-TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "cocosub_finetune_checkpoint_3e-4_epoch_20.pt"
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "cocosub_finetuned_model_weights_3e-4.pt"
+# trained on VOC, used for fine-tuning on COCO and KITTI
+VOC_TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "voc_trained_model_weights.pt" 
+
+# checkpoint to save during training, will be appended with epoch number. 
+# Also used for resuming training when LOAD_MODEL='train'
+TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "cocosub_finetune_checkpoint_3e-4_epoch_20.pt" 
+
+# the final model weights after training
+# will be updated whenever a new best model is found during training
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "cocosub_finetuned_model_weights_3e-4.pt" 
 
 LOSS_PLOT_PATH = BASE_DIR / "assets_cocosub" / "cocosub_finetune_loss_lr_3e-4.png"
+
 CHECKPOINT_T = 10
 
 
 
-##########################################################################
 def log(msg):
     tqdm.write(f"[{time.strftime('%H:%M:%S')}] {msg}")
 
@@ -427,7 +444,7 @@ def setup_train():
     log("Creating model...")
     model = YOLOv1(S=S,
                    B=B,
-                   C=VOC_Detection.C).to(DEVICE)
+                   C=DetectionDataset.C).to(DEVICE)
     log(f"Device: {DEVICE}")
 
     log("Creating optimizer...")
@@ -446,14 +463,14 @@ def setup_train():
 
     log("Creating loss function...")
     criterion = YOLO_Loss(S=S,
-                          C=VOC_Detection.C,
+                          C=DetectionDataset.C,
                           B=B,
                           D=D,
                           L_coord=L_COORD,
                           L_noobj=L_NOOBJ).to(DEVICE)
 
     log("Loading datasets...")
-    train_dataset = VOC_Detection(root_dir=DATASET_DIR,
+    train_dataset = DetectionDataset(root_dir=DATASET_DIR,
                                   split='train',
                                   transforms=transforms.Compose([
                                       RandomScaleTranslate(output_size=D,
@@ -466,7 +483,7 @@ def setup_train():
                                                         exp=EXPOSURE),
                                       RandomHorizontalFlip(p=0.5),
                                       ToYOLOTensor(S=S,
-                                                   C=VOC_Detection.C,
+                                                   C=DetectionDataset.C,
                                                    normalize=[[0.4549, 0.4341, 0.4010],
                                                               [0.2703, 0.2672, 0.2808]])]))
     log(f"Train dataset size: {len(train_dataset)}")
@@ -475,12 +492,12 @@ def setup_train():
         VAL_SPLIT = 'val'
     else:
         VAL_SPLIT = 'test'
-    test_dataset = VOC_Detection(root_dir=DATASET_DIR,
+    test_dataset = DetectionDataset(root_dir=DATASET_DIR,
                                  split=VAL_SPLIT,
                                  transforms=transforms.Compose([
                                      Resize(output_size=D),
                                      ToYOLOTensor(S=S,
-                                                  C=VOC_Detection.C,
+                                                  C=DetectionDataset.C,
                                                   normalize=[[0.4549, 0.4341, 0.4010],
                                                              [0.2703, 0.2672, 0.2808]])]))
     log(f"Test dataset size: {len(test_dataset)}")

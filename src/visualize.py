@@ -1,9 +1,12 @@
+"""
+prediction viewer built with matplotlib.
+"""
 import os.path
 import torch as th
 import torchvision.transforms.functional as fT
 from torchvision.utils import draw_bounding_boxes
 from model import YOLOv1
-from dataset import VOC_Detection
+from dataset import DetectionDataset
 from evaluate import postprocessing
 import PIL.Image as Image
 from typing import Tuple
@@ -89,9 +92,9 @@ def annotate_img(img: Image.Image,
 
     bboxes_class = bboxes[:, 0].long()
     objectness = bboxes[:, 1]
-    text = [f'{VOC_Detection.index2label[bb_class_ind]}: {objectness[i] * 100:.1f}%' for i, bb_class_ind in
+    text = [f'{DetectionDataset.index2label[bb_class_ind]}: {objectness[i] * 100:.1f}%' for i, bb_class_ind in
             enumerate(bboxes_class)]
-    obj_clrs = [VOC_Detection.label_clrs[bb_class_ind] for bb_class_ind in bboxes_class]
+    obj_clrs = [DetectionDataset.label_clrs[bb_class_ind] for bb_class_ind in bboxes_class]
 
     annotated_tensor = draw_bounding_boxes(img_tensor, bboxes_coords, text, width=4, font_size=20, colors=obj_clrs)
     annotated_img = fT.to_pil_image(annotated_tensor)
@@ -133,7 +136,7 @@ def update_plot(ax: matplotlib.axes.Axes,
     return img
 
 
-def setup_evaluation() -> Tuple[YOLOv1, VOC_Detection]:
+def setup_evaluation() -> Tuple[YOLOv1, DetectionDataset]:
     """
     Instantiate the model and the PASCAL VOC test dataset. The model's weights are loaded from the checkpoint file that
     was updated at the end of the training. The model will be used in the evaluation mode.
@@ -142,12 +145,12 @@ def setup_evaluation() -> Tuple[YOLOv1, VOC_Detection]:
     """
     model = YOLOv1(S=S,
                    B=B,
-                   C=VOC_Detection.C).to(DEVICE)
+                   C=DetectionDataset.C).to(DEVICE)
     trained_model_weights = th.load(TRAINED_MODEL_WEIGHTS)
     model.load_state_dict(trained_model_weights)
     model.eval()
 
-    test_dataset = VOC_Detection(root_dir=PASCAL_VOC_DIR_PATH,
+    test_dataset = DetectionDataset(root_dir=PASCAL_VOC_DIR_PATH,
                                  split='test')
 
     return model, test_dataset

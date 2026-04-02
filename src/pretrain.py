@@ -1,3 +1,7 @@
+"""
+ImageNet pretraining script for YOLOv1 (not used in this reproduction).
+"""
+
 import torch as th
 import torch.nn as nn
 import torchvision.transforms as transforms

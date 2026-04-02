@@ -1,3 +1,10 @@
+"""Analyze and validate CSV object detection labels for train/val/test splits.
+
+- Count class occurrences based on CLASS_NAMES.
+- Detect invalid rows, unknown classes, and bad bounding boxes.
+- Print summary by split and train/test comparison.
+"""
+
 from pathlib import Path
 from collections import defaultdict
 import csv
@@ -198,7 +205,7 @@ def compare_train_test(train_stats, test_stats):
 
 
 def main():
-    print("Checking KITTI csv labels by split...")
+    print("Checking csv labels by split...")
 
     print("\nDataset class definition:")
     for i, cls in enumerate(CLASS_NAMES):

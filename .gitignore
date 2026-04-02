@@ -1,5 +1,6 @@
 data/
-code/test.py
+code
 code/__pycache__/
-scripts/data_backup/
+scripts
 checkpoints/
+assets/

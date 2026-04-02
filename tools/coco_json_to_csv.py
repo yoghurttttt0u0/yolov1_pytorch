@@ -1,43 +1,39 @@
+"""Convert COCO JSON annotations to per-image CSV labels and optionally copy images.
+
+- Reads COCO train annotations and maps category IDs to names.
+- Converts COCO bbox format [x,y,w,h] to [xmin,ymin,xmax,ymax].
+- Writes one CSV per image with valid boxes.
+"""
+
 import json
 import os
 import csv
 import shutil
 from collections import defaultdict
 from pathlib import Path
-# =========================================================
-# Path settings
-# =========================================================
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# COCO train annotation JSON path
 json_path = r"D:\course-resource\Machine_Learning_for_Data_Science\YOLOv1\COCO\instances_train2017.json"
-# Change this to your real COCO train annotation JSON path
 
+# output root folder path
 image_dir = BASE_DIR / "data" / "COCO" / "train" / "images"
-
-# Change this to your real output root folder path
-
 output_target_dir = BASE_DIR / "data" / "COCO" / "train" / "targets"
 
-max_images = None
 # Set to None to process the full dataset
 # Change this to an integer like 1000 if you want a limited run
+max_images = None
 
-copy_images = False
 # If True, copy source images into the output folder
+copy_images = False
 
-skip_empty_images = False
 # If True, skip images that end up with no valid boxes
-
-# =========================================================
-# Create output folders
-# =========================================================
+skip_empty_images = False
 
 
 os.makedirs(output_target_dir, exist_ok=True)
-
-# =========================================================
-# Load COCO JSON
-# =========================================================
 
 with open(json_path, "r", encoding="utf-8") as f:
     data = json.load(f)
@@ -51,9 +47,6 @@ print(f"Number of images in JSON: {len(images)}")
 print(f"Number of annotations in JSON: {len(annotations)}")
 print(f"Number of categories in JSON: {len(categories)}")
 
-# =========================================================
-# Build mappings
-# =========================================================
 
 image_id_to_info = {img["id"]: img for img in images}
 category_id_to_name = {cat["id"]: cat["name"] for cat in categories}
@@ -63,10 +56,6 @@ for ann in annotations:
     anns_by_image[ann["image_id"]].append(ann)
 
 print("Mappings built successfully.")
-
-# =========================================================
-# Process all images
-# =========================================================
 
 processed_count = 0
 written_csv_count = 0
@@ -94,7 +83,6 @@ for img in images:
 
         x, y, w, h = bbox
 
-        # Skip invalid source boxes
         if w <= 0 or h <= 0:
             continue
 
@@ -104,25 +92,21 @@ for img in images:
         xmax = x + w
         ymax = y + h
 
-        # First clamp using float coordinates
         xmin = max(0.0, xmin)
         ymin = max(0.0, ymin)
         xmax = min(float(img_width), xmax)
         ymax = min(float(img_height), ymax)
 
-        # Convert coordinates to integers for compatibility with dataset.py
         xmin = int(round(xmin))
         ymin = int(round(ymin))
         xmax = int(round(xmax))
         ymax = int(round(ymax))
 
-        # Clamp again after rounding
         xmin = max(0, min(xmin, img_width))
         ymin = max(0, min(ymin, img_height))
         xmax = max(0, min(xmax, img_width))
         ymax = max(0, min(ymax, img_height))
 
-        # Final validity check
         if xmax <= xmin or ymax <= ymin:
             continue
 
@@ -131,7 +115,6 @@ for img in images:
 
         valid_rows.append([class_name, xmin, ymin, xmax, ymax])
 
-    # Skip empty images if requested
     if len(valid_rows) == 0 and skip_empty_images:
         skipped_no_valid_bbox += 1
         continue
@@ -144,12 +127,10 @@ for img in images:
         skipped_missing_image += 1
         continue
 
-    # Copy image
     if copy_images:
         shutil.copy2(src_img_path, dst_img_path)
         copied_image_count += 1
 
-    # Write CSV
     csv_name = os.path.splitext(file_name)[0] + ".csv"
     csv_path = os.path.join(output_target_dir, csv_name)
 
@@ -164,9 +145,6 @@ for img in images:
     if processed_count % 1000 == 0:
         print(f"[INFO] Processed {processed_count} images...")
 
-# =========================================================
-# Final summary
-# =========================================================
 
 print("\n=== DONE ===")
 print(f"Images processed successfully : {processed_count}")

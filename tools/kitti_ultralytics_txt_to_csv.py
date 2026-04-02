@@ -1,12 +1,14 @@
+"""
+Convert Ultralytics YOLO format (txt) to VOC-like CSV format for the KITTI dataset.
+"""
+
 import os
 from pathlib import Path
 import csv
 import yaml
 from PIL import Image
 
-# ======================
-# 1. LOAD CLASS MAPPING
-# ======================
+
 def load_class_mapping(yaml_path):
     with open(yaml_path, 'r', encoding='utf-8') as f:
         data = yaml.safe_load(f)
@@ -18,9 +20,7 @@ def load_class_mapping(yaml_path):
     return class_map
 
 
-# ======================
-# 2. YOLO -> VOC
-# ======================
+
 def yolo_to_voc(xc, yc, w, h, img_w, img_h):
     xc *= img_w
     yc *= img_h
@@ -41,9 +41,6 @@ def yolo_to_voc(xc, yc, w, h, img_w, img_h):
     return int(xmin), int(ymin), int(xmax), int(ymax)
 
 
-# ======================
-# 3. CONVERT ONE FILE
-# ======================
 def convert_one(image_path, label_path, output_csv, class_map):
     img = Image.open(image_path)
     img_w, img_h = img.size
@@ -84,9 +81,6 @@ def convert_one(image_path, label_path, output_csv, class_map):
         writer.writerows(rows)
 
 
-# ======================
-# 4. CONVERT SPLIT
-# ======================
 def convert_split(images_dir, labels_dir, targets_dir, class_map):
     images_dir = Path(images_dir)
     labels_dir = Path(labels_dir)
@@ -107,9 +101,6 @@ def convert_split(images_dir, labels_dir, targets_dir, class_map):
             print(f"Processed {i}/{len(images)}")
 
 
-# ======================
-# 5. MAIN
-# ======================
 def main():
     base = r"D:\course-resource\Machine_Learning_for_Data_Science\YOLOv1\kitti"
 

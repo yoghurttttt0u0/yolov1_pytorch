@@ -1,3 +1,7 @@
+"""
+YOLOv1 loss function.
+"""
+
 import copy
 
 import torch as th

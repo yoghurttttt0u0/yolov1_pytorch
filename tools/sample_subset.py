@@ -1,3 +1,7 @@
+"""
+This script picks a subset of COCO train/val/test samples and copies images+labels to a reduced dataset.
+"""
+
 from pathlib import Path
 from collections import defaultdict
 import csv
@@ -328,7 +332,6 @@ def stratified_fill_by_dominant_class(
     if need <= 0:
         return selected_ids
 
-    # 第一步：按 reference_box_dist 先分配整数部分
     quotas = {}
     remainders = []
     assigned = 0
@@ -343,7 +346,6 @@ def stratified_fill_by_dominant_class(
         if available > quota:
             remainders.append((raw_quota - int(raw_quota), cls))
 
-    # 第二步：按小数余量继续补
     leftover = need - assigned
     remainders.sort(reverse=True)
 
@@ -356,7 +358,6 @@ def stratified_fill_by_dominant_class(
             quotas[cls] += 1
             leftover -= 1
 
-    # 第三步：如果还没补满，用剩余池随机补齐
     print(f"Quota assigned before fallback: {sum(quotas.values())}/{need}")
 
     for cls in CLASS_NAMES:
@@ -518,7 +519,6 @@ def copy_selected_files_fast(selected_items, out_img_dir, out_target_dir, split_
 
 def main():
 
-    # Build train / test metadata
     print("\n===== BUILD TRAIN METADATA =====")
     train_image_map = build_image_index(SRC_TRAIN_IMG_DIR)
     train_meta = collect_image_metadata(SRC_TRAIN_IMG_DIR, SRC_TRAIN_TARGET_DIR, train_image_map)
@@ -527,7 +527,6 @@ def main():
     test_image_map = build_image_index(SRC_TEST_IMG_DIR)
     test_meta = collect_image_metadata(SRC_TEST_IMG_DIR, SRC_TEST_TARGET_DIR, test_image_map)
 
-    # Calculate the reference distribution
     train_box_dist = compute_box_class_distribution(train_meta)
     train_density_dist = compute_density_distribution(train_meta)
 
@@ -597,7 +596,6 @@ def main():
     val_items = get_selected_items(remaining_train_meta, val_selected_ids)
     summarize_selection(val_items, "val")
 
-    # sample test set
     test_selected_ids = reserve_rare_images(
         test_meta,
         RARE_CLASSES,
@@ -626,7 +624,6 @@ def main():
     test_items = get_selected_items(test_meta, test_selected_ids)
     summarize_selection(test_items, "test")
 
-    # copy images and labels to target path
     copy_selected_files_fast(
         train_items,
         OUT_TRAIN_IMG,

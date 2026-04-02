@@ -1,9 +1,13 @@
+"""
+YOLOv1 evaluation script, which calculates the mean average precision (mAP) metric of the trained model.
+"""
+
 import torch as th
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from model import YOLOv1
-from dataset import VOC_Detection
+from dataset import DetectionDataset
 from loss import get_bb_corners, iou
 from transforms import Resize, ImgToTensor
 from typing import List, Tuple, Literal
@@ -23,17 +27,17 @@ PIN_MEMORY = True
 # NUM_WORKERS = 0
 # PIN_MEMORY = False
 
-# VOC Dataset Directory
+BASE_DIR = Path(__file__).resolve().parent.parent 
 
+# Dataset Directory
+PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "COCOsubset"
 
 # Trained Model Path
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "cocosub_finetuned_model_weights_3e-4_epoch_32.pt" 
 
-
-BASE_DIR = Path(__file__).resolve().parent.parent 
-PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "COCOsubset"
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "cocosub_finetuned_model_weights_3e-4_epoch_32.pt" ######## need to be changed
-# Compute Device (use a GPU if available)
+# Compute Device 
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
+
 # Postprocessing Hyperparameters
 PROB_THRESHOLD = 0.005  # this value is set ~= 0 for the map metric calculation
 NMS_THESHOLD = 0.6
@@ -65,10 +69,10 @@ def get_detected_boxes(y: th.Tensor,
 
     assert conf_mode in ['objectness', 'class']
 
-    y[..., :VOC_Detection.C] = F.softmax(y[..., :VOC_Detection.C], dim=-1)
-    class_score, class_ind = th.max(y[..., :VOC_Detection.C], dim=-1)
-    objectness, bboxes_ind = th.max(y[..., [VOC_Detection.C + i * 5 for i in range(B)]], dim=-1)
-    bboxes_coords_ind = th.arange(4, device=DEVICE)[None, None, None, :] + VOC_Detection.C + bboxes_ind[
+    y[..., :DetectionDataset.C] = F.softmax(y[..., :DetectionDataset.C], dim=-1)
+    class_score, class_ind = th.max(y[..., :DetectionDataset.C], dim=-1)
+    objectness, bboxes_ind = th.max(y[..., [DetectionDataset.C + i * 5 for i in range(B)]], dim=-1)
+    bboxes_coords_ind = th.arange(4, device=DEVICE)[None, None, None, :] + DetectionDataset.C + bboxes_ind[
         ..., None] * 5 + 1
     bboxes_coords = th.gather(y, dim=-1, index=bboxes_coords_ind)
     detection_mask = (objectness > prob_threshold)
@@ -136,11 +140,11 @@ def rescale_bboxes(y: th.Tensor) -> None:
     row = row.unsqueeze(-1)
     col = col.unsqueeze(-1)
 
-    y[..., [VOC_Detection.C + i * 5 + 1 for i in range(B)]] += col
-    y[..., [VOC_Detection.C + i * 5 + 2 for i in range(B)]] += row
-    y[..., [VOC_Detection.C + i * 5 + j for j in [1, 2] for i in range(B)]] *= D / S
+    y[..., [DetectionDataset.C + i * 5 + 1 for i in range(B)]] += col
+    y[..., [DetectionDataset.C + i * 5 + 2 for i in range(B)]] += row
+    y[..., [DetectionDataset.C + i * 5 + j for j in [1, 2] for i in range(B)]] *= D / S
 
-    y[..., [VOC_Detection.C + i * 5 + j for j in [3, 4] for i in range(B)]] *= D * y[..., [VOC_Detection.C + i * 5 + j
+    y[..., [DetectionDataset.C + i * 5 + j for j in [3, 4] for i in range(B)]] *= D * y[..., [DetectionDataset.C + i * 5 + j
                                                                                            for j in [3, 4] for i in
                                                                                            range(B)]]
 
@@ -222,8 +226,8 @@ def evaluate_model(model: YOLOv1, test_loader: DataLoader) -> Tuple[float, List[
     :return: The mean average precision of the model and the average precisions for each of the classes of the PASCAL
              VOC dataset.
     """
-    total_class_pred_bboxes = th.zeros(VOC_Detection.C, device=DEVICE)
-    total_class_gt_bboxes = th.zeros(VOC_Detection.C, device=DEVICE)
+    total_class_pred_bboxes = th.zeros(DetectionDataset.C, device=DEVICE)
+    total_class_gt_bboxes = th.zeros(DetectionDataset.C, device=DEVICE)
     total_predictions = th.empty((0, 3), device=DEVICE)
 
     with th.no_grad():
@@ -236,8 +240,8 @@ def evaluate_model(model: YOLOv1, test_loader: DataLoader) -> Tuple[float, List[
                                          conf_mode=CONF_MODE,
                                          nms_threshold=NMS_THESHOLD)
 
-            total_class_pred_bboxes += th.bincount(bboxes_pred[:, 0].long(), minlength=VOC_Detection.C)
-            total_class_gt_bboxes += th.bincount(bboxes_gt[:, 0].long(), minlength=VOC_Detection.C)
+            total_class_pred_bboxes += th.bincount(bboxes_pred[:, 0].long(), minlength=DetectionDataset.C)
+            total_class_gt_bboxes += th.bincount(bboxes_gt[:, 0].long(), minlength=DetectionDataset.C)
 
             predictions_class_ind = bboxes_pred[:, 0]
             predictions_conf = bboxes_pred[:, 1]
@@ -247,7 +251,7 @@ def evaluate_model(model: YOLOv1, test_loader: DataLoader) -> Tuple[float, List[
             total_predictions = th.cat([total_predictions, sample_predictions])
 
     average_precisions = []
-    for c in range(VOC_Detection.C):
+    for c in range(DetectionDataset.C):
 
         class_mask = total_predictions[:, 0] == c
         if not th.max(class_mask):
@@ -282,7 +286,7 @@ def setup_evaluation() -> Tuple[YOLOv1, DataLoader]:
     print("A. creating model")
     model = YOLOv1(S=S,
                    B=B,
-                   C=VOC_Detection.C).to(DEVICE)
+                   C=DetectionDataset.C).to(DEVICE)
     
     print("B. loading weights")
     trained_model_weights = th.load(TRAINED_MODEL_WEIGHTS)
@@ -298,7 +302,7 @@ def setup_evaluation() -> Tuple[YOLOv1, DataLoader]:
     #                                                         [0.2703, 0.2672, 0.2808]])
     #                              ]))
 
-    test_dataset = VOC_Detection(root_dir=PASCAL_VOC_DIR_PATH,
+    test_dataset = DetectionDataset(root_dir=PASCAL_VOC_DIR_PATH,
                                  split='test',
                                  transforms=transforms.Compose([
                                      Resize(output_size=D),
@@ -324,7 +328,7 @@ def plot_class_ap(average_precisions: List[float]) -> None:
     :param average_precisions: A list that contains the average precisions for each class of the VOC detection dataset.
     """
     fig, ax = plt.subplots(figsize=(12, 24))
-    bars = ax.barh(VOC_Detection.index2label, average_precisions, color=VOC_Detection.label_clrs)
+    bars = ax.barh(DetectionDataset.index2label, average_precisions, color=DetectionDataset.label_clrs)
     ax.bar_label(bars, labels=[f'{ap:.1f}%' for ap in average_precisions])
     ax.invert_yaxis()
 

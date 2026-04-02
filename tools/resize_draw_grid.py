@@ -1,3 +1,9 @@
+"""Resize images to 448x448 and overlay the YOLO grid for easy visual checks.
+
+This script makes it simple to see how objects land in the model input and feel the effect of
+preprocessing.
+"""
+
 from PIL import Image
 import cv2
 import numpy as np
@@ -26,7 +32,7 @@ def draw_grid(img: Image.Image, S: int = 7):
     return Image.fromarray(img_np)
 
 
-# ===== MAIN =====
+#  MAIN 
 img_path = r"D:\course-resource\Machine_Learning_for_Data_Science\YOLOv1\yolov1_pytorch\data\KITTI\test\images\001530.png"
 
 print("Loading image...")
