@@ -157,7 +157,7 @@ class VOC_Detection(Dataset):
         :param transforms: The transforms that are applied to the images (x) and their corresponding targets (y).
         """
 
-        assert split == 'train' or split == 'test'
+        assert split == 'train' or split == 'test' or split == 'val'
         split_dir = os.path.join(root_dir, split)
 
         self.img_dir = os.path.join(split_dir, "images")
@@ -187,11 +187,11 @@ class VOC_Detection(Dataset):
         # img_path = os.path.join(self.img_dir, f'{pid}.png')##########################################################
         annot_path = os.path.join(self.annot_dir, f'{pid}.csv')
 
-        img = Image.open(img_path)
+        img = Image.open(img_path).convert("RGB")
         target = []
         with open(annot_path, 'r') as csv_file:
             csv_reader = csv.reader(csv_file)
-            next(csv_reader)                    # Remove the header
+            next(csv_reader) # Remove the header
             for row in csv_reader:
                 target.append([self.label2index[row[0]]] + [int(row[i]) for i in range(1, 5)])
         target = th.Tensor(target)

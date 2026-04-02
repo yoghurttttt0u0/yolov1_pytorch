@@ -77,6 +77,22 @@ DROP_LAST = True
 # ]
 # MOMENTUM = 0.9
 # WEIGHT_DECAY = 0.0005
+
+# MAX_EPOCHS = 50
+
+# INIT_LR = 3e-4
+# BURN_IN = 200
+# BURN_IN_POW = 2.0
+
+# LR_SCHEDULE = [
+#     (3000, 0.1),   # about epoch 8
+#     (7000, 0.1)    # about epoch 19
+# ]
+
+# MOMENTUM = 0.9
+# WEIGHT_DECAY = 0.0005
+
+# # Training Hyperparameters (fine-tune for VOC -> COCO)
 MAX_EPOCHS = 50
 
 INIT_LR = 3e-4
@@ -84,27 +100,12 @@ BURN_IN = 200
 BURN_IN_POW = 2.0
 
 LR_SCHEDULE = [
-    (3000, 0.1),   # about epoch 8
-    (7000, 0.1)    # about epoch 19
+    (3000, 0.1),
+    (7000, 0.1)
 ]
 
 MOMENTUM = 0.9
 WEIGHT_DECAY = 0.0005
-
-# # Training Hyperparameters (fine-tune for VOC -> COCO)
-# MAX_EPOCHS = 5
-
-# INIT_LR = 3e-4
-# BURN_IN = 1000
-# BURN_IN_POW = 2.0
-
-# LR_SCHEDULE = [
-#     (10000, 0.1),
-#     (18000, 0.1)
-# ]
-
-# MOMENTUM = 0.9
-# WEIGHT_DECAY = 0.0005
 
 # Early Stopping Hyperparameters
 EARLY_STOPPING_PATIENCE = 5
@@ -112,7 +113,7 @@ EARLY_STOPPING_MIN_DELTA = 1e-3
 
 BASE_DIR = Path(__file__).resolve().parent.parent 
 # Dataset Directory
-DATASET_DIR = BASE_DIR / "data" / "KITTI"
+DATASET_DIR = BASE_DIR / "data" / "COCOsubset"
 
 # Compute Device (use a GPU if available)
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
@@ -123,10 +124,10 @@ LOAD_MODEL = 'train'  # 'pretrain', 'train', None, 'voc'
 
 PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt"
 VOC_TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "voc_trained_model_weights.pt"
-TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "kitti_finetune_checkpoint_3e-4.pt"
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights_3e-4.pt"
+TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "cocosub_finetune_checkpoint_3e-4_epoch_20.pt"
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "cocosub_finetuned_model_weights_3e-4.pt"
 
-LOSS_PLOT_PATH = BASE_DIR / "assets_KITTI" / "KITTI_finetune_loss_lr_3e-4.png"
+LOSS_PLOT_PATH = BASE_DIR / "assets_cocosub" / "cocosub_finetune_loss_lr_3e-4.png"
 CHECKPOINT_T = 10
 
 
@@ -470,9 +471,12 @@ def setup_train():
                                                               [0.2703, 0.2672, 0.2808]])]))
     log(f"Train dataset size: {len(train_dataset)}")
 
-
+    if os.path.isdir(os.path.join(DATASET_DIR, 'val')):
+        VAL_SPLIT = 'val'
+    else:
+        VAL_SPLIT = 'test'
     test_dataset = VOC_Detection(root_dir=DATASET_DIR,
-                                 split='test',
+                                 split=VAL_SPLIT,
                                  transforms=transforms.Compose([
                                      Resize(output_size=D),
                                      ToYOLOTensor(S=S,

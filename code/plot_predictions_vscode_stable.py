@@ -21,13 +21,13 @@ D = 448
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Trained Model Path
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights_3e-4.pt" 
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "cocosub_finetuned_model_weights_3e-4.pt" 
 
 # KITTI Dataset Directory
-PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "KITTI"
+PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "COCOsubset"
 
 # Save Image Path
-ASSETS_DIR = BASE_DIR / "assets_KITTI"
+ASSETS_DIR = BASE_DIR / "assets_COCOsub"
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Compute Device (use a GPU if available)
@@ -39,7 +39,7 @@ NMS_THRESHOLD = 0.6
 CONF_MODE = "objectness"
 
 # OpenCV window name
-WINDOW_NAME = "YOLOv1 KITTI Predictions"
+WINDOW_NAME = "YOLOv1 COCO subset Predictions"
 
 # OpenCV key codes (waitKeyEx)
 KEY_LEFT = 2424832

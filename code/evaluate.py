@@ -24,15 +24,14 @@ PIN_MEMORY = True
 # PIN_MEMORY = False
 
 # VOC Dataset Directory
-# PASCAL_VOC_DIR_PATH = "/media/soul/DATA/cv_datasets/PASCAL_VOC/VOC_Detection"
+
 
 # Trained Model Path
-# TRAINED_MODEL_WEIGHTS = "/home/soul/Development/You Only Look Once - Unified, Real-Time Object " \
-#                         "Detection/checkpoints/trained_model_weights.pt"
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent 
-PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "KITTI"
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_finetuned_model_weights_3e-4.pt" ######## need to be changed
+PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "COCOsubset"
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "cocosub_finetuned_model_weights_3e-4_epoch_32.pt" ######## need to be changed
 # Compute Device (use a GPU if available)
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 # Postprocessing Hyperparameters
@@ -252,6 +251,7 @@ def evaluate_model(model: YOLOv1, test_loader: DataLoader) -> Tuple[float, List[
 
         class_mask = total_predictions[:, 0] == c
         if not th.max(class_mask):
+            average_precisions.append(0.0)
             continue
 
         class_predictions = total_predictions[class_mask]
@@ -290,6 +290,14 @@ def setup_evaluation() -> Tuple[YOLOv1, DataLoader]:
 
 
     print("C. creating dataset")
+    # test_dataset = VOC_Detection(root_dir=PASCAL_VOC_DIR_PATH,
+    #                              split='test',
+    #                              transforms=transforms.Compose([
+    #                                  Resize(output_size=D),
+    #                                  ImgToTensor(normalize=[[0.4549, 0.4341, 0.4010],
+    #                                                         [0.2703, 0.2672, 0.2808]])
+    #                              ]))
+
     test_dataset = VOC_Detection(root_dir=PASCAL_VOC_DIR_PATH,
                                  split='test',
                                  transforms=transforms.Compose([
@@ -315,7 +323,7 @@ def plot_class_ap(average_precisions: List[float]) -> None:
 
     :param average_precisions: A list that contains the average precisions for each class of the VOC detection dataset.
     """
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12, 24))
     bars = ax.barh(VOC_Detection.index2label, average_precisions, color=VOC_Detection.label_clrs)
     ax.bar_label(bars, labels=[f'{ap:.1f}%' for ap in average_precisions])
     ax.invert_yaxis()

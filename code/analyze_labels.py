@@ -151,7 +151,13 @@ def analyze_split(target_dir: Path, split_name: str):
 
     print("\nClass distribution:")
     for cls in CLASS_NAMES:
-        print(f"{cls:20s}: {counts[cls]}")
+        count = counts[cls]
+        if total_boxes > 0:
+            percentage = (count / total_boxes) * 100
+        else:
+            percentage = 0.0
+
+        print(f"{cls:20s}: {count:8d} ({percentage:6.2f}%)")
 
     print("\nUnknown classes:")
     if unknown_classes:
