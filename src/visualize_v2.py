@@ -1,7 +1,7 @@
 """
 OpenCV-based prediction viewer as an alternative to matplotlib.
-
 Some team members have display issues with matplotlib, so this script uses OpenCV for more consistent behavior.
+The old version using matplotlib is kept in tools/visualize.py.
 """
 
 import os
@@ -27,13 +27,13 @@ D = 448
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Trained Model Path
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "cocosub_finetuned_model_weights_3e-4.pt" 
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_model_weights.pt.pt" 
 
 # KITTI Dataset Directory
-PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "COCOsubset"
+PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "KITTI"
 
 # Save Image Path
-ASSETS_DIR = BASE_DIR / "assets_COCOsub"
+ASSETS_DIR = BASE_DIR / "results" / "assets_KITTI"
 ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
 DEVICE = "cuda" if th.cuda.is_available() else "cpu"
@@ -43,7 +43,7 @@ PROB_THRESHOLD = 0.15
 NMS_THRESHOLD = 0.6
 CONF_MODE = "objectness"
 
-WINDOW_NAME = "YOLOv1 COCO subset Predictions"
+WINDOW_NAME = "YOLOv1 Predictions"
 
 # OpenCV key codes (waitKeyEx)
 KEY_LEFT = 2424832

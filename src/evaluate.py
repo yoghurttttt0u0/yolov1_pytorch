@@ -24,16 +24,14 @@ D = 448
 MINI_BATCH = 1
 NUM_WORKERS = 1
 PIN_MEMORY = True
-# NUM_WORKERS = 0
-# PIN_MEMORY = False
 
 BASE_DIR = Path(__file__).resolve().parent.parent 
 
 # Dataset Directory
-PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "COCOsubset"
+PASCAL_VOC_DIR_PATH = BASE_DIR / "data" / "KITTI"
 
 # Trained Model Path
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "cocosub_finetuned_model_weights_3e-4_epoch_32.pt" 
+TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "kitti_model_weights.pt.pt" 
 
 # Compute Device 
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'

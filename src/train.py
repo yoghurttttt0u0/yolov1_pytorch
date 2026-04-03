@@ -69,47 +69,28 @@ DROP_LAST = True
 # WEIGHT_DECAY = 0.0005
 
 # Training Hyperparameters 2(fine-tune for VOC -> KITTI)
-# MAX_EPOCHS = 30
-# INIT_LR = 1e-4
-# MAX_EPOCHS = 30
-# INIT_LR = 1e-3
-# BURN_IN = 0
-# BURN_IN_POW = 2.0
-# LR_SCHEDULE = [
-#     (1000, 0.1),   # after 1000 optimizer updates, lr *= 0.1
-#     (2000, 0.1)    # after 2000 optimizer updates, lr *= 0.1 again
-# ]
-# MOMENTUM = 0.9
-# WEIGHT_DECAY = 0.0005
-
-# MAX_EPOCHS = 50
-
-# INIT_LR = 3e-4
-# BURN_IN = 200
-# BURN_IN_POW = 2.0
-
-# LR_SCHEDULE = [
-#     (3000, 0.1),   # about epoch 8
-#     (7000, 0.1)    # about epoch 19
-# ]
-
-# MOMENTUM = 0.9
-# WEIGHT_DECAY = 0.0005
-
-# Training Hyperparameters 3 (fine-tune for VOC -> COCO)
 MAX_EPOCHS = 50
-
 INIT_LR = 3e-4
 BURN_IN = 200
 BURN_IN_POW = 2.0
-
 LR_SCHEDULE = [
-    (3000, 0.1),
-    (7000, 0.1)
+    (3000, 0.1),   # about epoch 8
+    (7000, 0.1)    # about epoch 19
 ]
-
 MOMENTUM = 0.9
 WEIGHT_DECAY = 0.0005
+
+# Training Hyperparameters 3 (fine-tune for VOC -> COCO)
+# MAX_EPOCHS = 50
+# INIT_LR = 3e-4
+# BURN_IN = 200
+# BURN_IN_POW = 2.0
+# LR_SCHEDULE = [
+#     (3000, 0.1),
+#     (7000, 0.1)
+# ]
+# MOMENTUM = 0.9
+# WEIGHT_DECAY = 0.0005
 
 # Early Stopping Hyperparameters
 EARLY_STOPPING_PATIENCE = 5
@@ -118,7 +99,7 @@ EARLY_STOPPING_MIN_DELTA = 1e-3
 BASE_DIR = Path(__file__).resolve().parent.parent 
 
 # Dataset Directory
-DATASET_DIR = BASE_DIR / "data" / "COCOsubset"
+DATASET_DIR = BASE_DIR / "data" / "KITTI"
 
 # Compute Device
 DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
@@ -128,9 +109,9 @@ DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 # 'pretrain': load the pretrained model weights trained on ImageNet.
 # 'voc': load the model weights trained on VOC for fine-tuning on COCO and KITTI.
 # 'train': load the checkpoint saved during training, which can be used for resuming training.
-LOAD_MODEL = 'train'  
+LOAD_MODEL = 'voc'  
 
-# trained on ImageNet, not used for the repoduction
+# trained on ImageNet, usd for training on VOC from scratch, not used for fine-tuning on COCO and KITTI
 PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt" 
 
 # trained on VOC, used for fine-tuning on COCO and KITTI
@@ -138,15 +119,16 @@ VOC_TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "voc_trained_model_weight
 
 # checkpoint to save during training, will be appended with epoch number. 
 # Also used for resuming training when LOAD_MODEL='train'
-TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "cocosub_finetune_checkpoint_3e-4_epoch_20.pt" 
+TRAINING_CHECKPOINT_PATH = BASE_DIR / "checkpoints" / "kitti_finetune_checkpoint.pt" 
 
 # the final model weights after training
 # will be updated whenever a new best model is found during training
-TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "cocosub_finetuned_model_weights_3e-4.pt" 
+TRAINED_MODEL_WEIGHTS_PATH = BASE_DIR / "checkpoints" / "kitti_finetune_model_weights.pt" 
 
-LOSS_PLOT_PATH = BASE_DIR / "assets_cocosub" / "cocosub_finetune_loss_lr_3e-4.png"
+LOSS_PLOT_PATH = BASE_DIR / "results" / "kitti" / "kitti_finetune_loss.png"
 
-CHECKPOINT_T = 10
+# save a checkpoint every CHECKPOINT_T epochs
+CHECKPOINT_T = 10 
 
 
 
@@ -389,7 +371,7 @@ def train(train_loader: DataLoader,
             epochs_without_improvement = 0
 
             
-            th.save(model.state_dict(), TRAINED_MODEL_WEIGHTS)
+            th.save(model.state_dict(), TRAINED_MODEL_WEIGHTS_PATH)
             log(f"New best model saved. Best Test Loss={best_test_loss:.4f}")
         else:
             epochs_without_improvement += 1
@@ -424,7 +406,7 @@ def train(train_loader: DataLoader,
 
         log(f"Epoch {epoch} finished | Train Loss={train_loss:.4f} | Test Loss={test_loss:.4f}")
 
-    log(f"Training finished. Best model already saved to: {TRAINED_MODEL_WEIGHTS}")
+    log(f"Training finished. Best model already saved to: {TRAINED_MODEL_WEIGHTS_PATH}")
     pbar.close()
 
 
@@ -439,7 +421,7 @@ def setup_train():
     """
     log(f"DATASET_DIR: {DATASET_DIR}")
     log(f"VOC_TRAINED_MODEL_WEIGHTS: {VOC_TRAINED_MODEL_WEIGHTS}")
-    log(f"TRAINED_MODEL_WEIGHTS: {TRAINED_MODEL_WEIGHTS}")
+    log(f"TRAINED_MODEL_WEIGHTS: {TRAINED_MODEL_WEIGHTS_PATH}")
 
     log("Creating model...")
     model = YOLOv1(S=S,
