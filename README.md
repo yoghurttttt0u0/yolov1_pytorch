@@ -116,11 +116,11 @@ Each dataset should follow the structure:
 
 - PASCAL VOC:
 
-   [machine_learning_datasets](https://1drv.ms/f/c/4983d277679ee942/IgCfI9fWmk7WQ6NLcQzSP5wuARV0lf-4hBqza0ArhokAG4g?e=hph34n)
+  [VOC_Detection.zip](https://liveuclac-my.sharepoint.com/:u:/g/personal/ucesxy9_ucl_ac_uk/IQC2M1BoE5K_QLjENLfiY4KbAUPNUZttzomcjPFZ4BiIM08?e=C3cpeX)
 
 - KITTI: 
 
-  [machine_learning_datasets](https://1drv.ms/f/c/4983d277679ee942/IgCfI9fWmk7WQ6NLcQzSP5wuARV0lf-4hBqza0ArhokAG4g?e=hph34n)
+  [KITTI.zip](https://liveuclac-my.sharepoint.com/:u:/g/personal/ucesxy9_ucl_ac_uk/IQDAPGPaSxTqQZkd6tzHP-nZAXclcmCzsgg-74eikumoFh8?e=s0cjtW)
 
 - COCO subset: 
 
@@ -132,23 +132,15 @@ After downloading, unzip the datasets and place them under the `data/` directory
 
 ### 4.2 Trained Models
 
-Pre-trained and fine-tuned models are also not included due to file size constraints.
+Fine-tuned models are also not included due to file size constraints.
 
 Please download them and place them in the `checkpoints/` directory.
 
 **Model download links:**
 
-- Pre-trained model (ImageNet):
-
-  
-
-- Trained on PASCAL VOC:
-
-  (link here)
-
 - Fine-tuned on KITTI:
 
-  
+  [kitti_finetune_model_weights.pt](https://liveuclac-my.sharepoint.com/:u:/g/personal/ucesxy9_ucl_ac_uk/IQBiZmgYA_BsQYd0wGOvZDYrAcl14N94Slfi-5tkiL8REBs?e=GZewiJ)
 
 - Fine-tuned on COCO subset:
 

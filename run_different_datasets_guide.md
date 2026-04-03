@@ -35,7 +35,7 @@ For example, when switching to **KITTI**, enable the KITTI class definition code
 
 3. Update the **checkpoint** and **model weight paths**.
 
-![Checkpoint path example](docs\images\image-20260402232902177.png)
+![image-20260403034107085](docs\images\image-20260403034107085.png)
 
 4. Update the **hyperparameters** for the selected dataset.
 

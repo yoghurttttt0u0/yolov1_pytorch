@@ -115,7 +115,7 @@ LOAD_MODEL = 'voc'
 PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt" 
 
 # trained on VOC, used for fine-tuning on COCO and KITTI
-VOC_TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "voc_trained_model_weights.pt" 
+VOC_TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "trained_model_weights.pt" 
 
 # checkpoint to save during training, will be appended with epoch number. 
 # Also used for resuming training when LOAD_MODEL='train'
