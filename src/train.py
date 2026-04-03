@@ -111,10 +111,10 @@ DEVICE = 'cuda' if th.cuda.is_available() else 'cpu'
 # 'train': load the checkpoint saved during training, which can be used for resuming training.
 LOAD_MODEL = 'voc'  
 
-# trained on ImageNet, usd for training on VOC from scratch, not used for fine-tuning on COCO and KITTI
+# trained on ImageNet, usd for training on VOC from scratch, not used for fine-tuning on COCO and KITTI 
 PRETRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "pretrained_model_weights.pt" 
 
-# trained on VOC, used for fine-tuning on COCO and KITTI
+# trained on VOC, used for fine-tuning on COCO and KITTI 
 VOC_TRAINED_MODEL_WEIGHTS = BASE_DIR / "checkpoints" / "trained_model_weights.pt" 
 
 # checkpoint to save during training, will be appended with epoch number. 
